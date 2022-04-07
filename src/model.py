@@ -67,7 +67,7 @@ class Generator(nn.Module):
                 nn.Linear(512, 16384),
                 *res_blocks,
                 nn.Sequential([
-                    nn.Conv(64, 3, 3, 1, 1),
+                    nn.Conv2d(64, 3, 3, 1, 1),
                     nn.Tanh()
                 ])
             ]
