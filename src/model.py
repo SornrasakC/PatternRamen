@@ -10,9 +10,9 @@ class Discriminator(nn.Module):
         
         self.block_1 = DiscriminatorBlock(3, 64, **dis_block_options)
         self.block_2 = DiscriminatorBlock(64, 128, **dis_block_options)
-        self.block_3 = DiscriminatorBlock(128, 256, **dis_block_options)
-        self.block_4 = DiscriminatorBlock(256, 512, **dis_block_options)
-        self.conv = nn.Conv2d(512, 1, 4, 1)
+        self.block_3 = DiscriminatorBlock(128, 256, **dis_block_options) # ()
+        self.block_4 = DiscriminatorBlock(256, 512, **dis_block_options) # (19, 19, C)
+        self.conv = nn.Conv2d(512, 1, 4, 1) # (16, 16, 1)
 
     def forward(self, x):
         x = self.block_1(x)
@@ -64,7 +64,7 @@ class Generator(nn.Module):
 
         self.decoder_blocks = nn.ModuleList(
             [
-                nn.Linear(512, 16384),
+                nn.Linear(256, 16384),
                 *res_blocks,
                 nn.Sequential(
                     nn.Conv2d(64, 3, 3, 1, 1),
