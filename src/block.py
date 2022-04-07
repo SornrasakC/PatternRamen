@@ -3,7 +3,7 @@ import torch.functional as F
 import torch.nn.utils.spectral_norm as spectral_norm
 # import torch.nn.utils.parametrizations.spectral_norm as spectral_norm
 
-from normalization import SPADE
+from src.normalization import SPADE
 
 class DiscriminatorBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding):

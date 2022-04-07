@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from .block import DiscriminatorBlock, GeneratorEncoderBlock, SPADEResBlock
+from src.block import DiscriminatorBlock, GeneratorEncoderBlock, SPADEResBlock
 
 
 class Discriminator(nn.Module):
