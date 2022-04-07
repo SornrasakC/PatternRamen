@@ -1,5 +1,5 @@
 from torch import nn
-import torch.functional as F
+import torch.nn.functional as F
 import torch.nn.utils.spectral_norm as spectral_norm
 # import torch.nn.utils.parametrizations.spectral_norm as spectral_norm
 

@@ -1,5 +1,5 @@
 from torch import nn
-import torch.functional as F
+import torch.nn.functional as F
 
 # https://github.com/NVlabs/SPADE/blob/master/models/networks/normalization.py#L66
 class SPADE(nn.Module):
