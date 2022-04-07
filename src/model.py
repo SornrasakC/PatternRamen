@@ -49,21 +49,19 @@ class Generator(nn.Module):
             ]
         )
 
-        # TODO1
         res_blocks = [
+            SPADEResBlock(1024, 1024, segmap_channels=512, scale_factor=2),
             SPADEResBlock(1024, 1024, segmap_channels=512),
-            SPADEResBlock(1024, 1024, segmap_channels=512),
-            SPADEResBlock(1024, 1024, segmap_channels=512),
+            SPADEResBlock(1024, 1024, segmap_channels=512, scale_factor=2),
             SPADEResBlock(1024, 512 , segmap_channels=512),
-            SPADEResBlock(512 , 512 , segmap_channels=512),
+            SPADEResBlock(512 , 512 , segmap_channels=512, scale_factor=2),
             SPADEResBlock(512 , 256 , segmap_channels=256),
-            SPADEResBlock(256 , 256 , segmap_channels=256),
+            SPADEResBlock(256 , 256 , segmap_channels=256, scale_factor=2),
             SPADEResBlock(256 , 128 , segmap_channels=128),
-            SPADEResBlock(128 , 128 , segmap_channels=128),
-            SPADEResBlock(128 , 64  , segmap_channels=64 ),
+            SPADEResBlock(128 , 128 , segmap_channels=128, scale_factor=2),
+            SPADEResBlock(128 , 64  , segmap_channels=64 , scale_factor=2),
         ]
 
-        
         self.decoder_blocks = nn.ModuleList(
             [
                 nn.Linear(512, 16384),

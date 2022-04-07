@@ -35,7 +35,7 @@ class GeneratorEncoderBlock(nn.Module):
 
 # https://github.com/NVlabs/SPADE/blob/master/models/networks/architecture.py#L21
 class SPADEResBlock(nn.Module):
-    def __init__(self, fin, fout, segmap_channels):
+    def __init__(self, fin, fout, segmap_channels, scale_factor=1):
         super().__init__()
 
         # self.learned_shortcut = (fin != fout)
@@ -59,6 +59,8 @@ class SPADEResBlock(nn.Module):
         self.norm_1 = SPADE(in_channels=fmiddle, segmap_channels=segmap_channels)
         self.norm_s = SPADE(in_channels=fin, segmap_channels=segmap_channels)
 
+        self.up = nn.Upsample(scale_factor=scale_factor) if scale_factor != 1 else nn.Identity()
+
     # note the resnet block with SPADE also takes in |seg|,
     # the semantic segmentation map as input
     def forward(self, x, seg):
@@ -67,7 +69,9 @@ class SPADEResBlock(nn.Module):
         dx = self.conv_0(self.actvn(self.norm_0(x, seg)))
         dx = self.conv_1(self.actvn(self.norm_1(dx, seg)))
 
-        out = x_s + dx
+        merged = x_s + dx
+
+        out = self.up(merged)
 
         return out
 
