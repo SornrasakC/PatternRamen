@@ -30,9 +30,9 @@ class Training():
     d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0002, betas=(0.5, 0.999))
     
     for _it in range(iterations):
-      line, color, noise = next(dataLoader)
+      line, color, transform_color, noise = next(dataLoader)
       d_optimizer_line.zero_grad()
-      generated_image = self.generator(line, random_transform(color), noise)
+      generated_image = self.generator(line, transform_color, noise)
       d_loss_line = (self.discriminator_line(line, color)-1)**2 + self.discriminator_line(line, generated_image)**2
       d_loss_line.backward()
       d_optimizer_line.step()
