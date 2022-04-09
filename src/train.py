@@ -6,13 +6,14 @@ from torch.nn import functional as F
 from torch import nn
 import torch
 import wandb
+import torchvision.models as models
 
 class Training():
   def __init__(self):
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
-    self.vgg16 = torch.hub.load('pytorch/vision:v0.10.0', 'vgg16', pretrained=True).features[:12]
+    self.vgg16 = models.vgg16(pretrained=True).features[:12]
     print(self.vgg16.features)
     self.vgg16.eval()
     self.discriminator_line.cuda()
