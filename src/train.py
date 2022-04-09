@@ -19,11 +19,12 @@ class Training():
     self.discriminator_color.cuda()
     self.generator.cuda()
     self.perceptual_criterion = nn.L1Loss()
+
+  def train(self, dataLoader, valDataLoader, iterations):
     wandb.init(project="colorization")
     wandb.watch(self.discriminator)
     wandb.watch(self.generator)
-
-  def train(self, dataLoader, iterations, valDataLoader):
+    
     g_optimizer = optim.Adam(self.generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
     d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=0.0002, betas=(0.5, 0.999))
     d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0002, betas=(0.5, 0.999))
