@@ -7,7 +7,9 @@ import sys
 import cv2
 import os
 import random
-
+import torch
+from torch import nn
+from torchvision import transforms
 
 PARAM = {
     'gamma' : 0.95,
@@ -29,7 +31,18 @@ def xdog(img,sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1):
   aux = np.where(aux < epsilon,1*255,255*(1 + np.tanh(phi*(aux))))
   return aux,imgColor
 
-class XDoGTrainData():
+def draw_random_line(img,line_range):
+    width = np.random.randint(*line_range)
+    start = np.random.randint(0,512-width)
+    end = np.random.randint(0+start,start+width)
+    spray_color = np.random.randint(0,255,3)
+    spray_color = np.tile(spray_color,(512,1))
+    spray_color = np.tile(spray_color,(end-start,1,1))
+    spray_color = np.transpose(spray_color,(2,1,0))
+    img[:,:,start:end] = torch.Tensor(spray_color)
+    return img
+
+class XDoGData():
     def __init__(self,param,folder_path):
         self.folder_path = folder_path
         self.data = os.listdir(folder_path)
@@ -38,6 +51,15 @@ class XDoGTrainData():
         self.epsilon = param['eps']
         self.k = param['k']
         self.sigma = param['sigma']
+        transform = nn.Sequential(transforms.RandomRotation(60,fill=255),
+                                  transforms.RandomPerspective(distortion_scale=0.3,p=1.0,fill=255),
+                                  transforms.RandomResizedCrop((512,512),scale=(0.8, 1.0)),
+                                  transforms.RandomHorizontalFlip(p=0.5),
+                                  # transforms.RandomVerticalFlip(p=0.5),
+                                  )
+        self.transform = torch.jit.script(transform)
+        rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
+        self.rotate = torch.jit.script(rotate)
 
     def __getitem__(self,idx):
         img = cv2.imread(self.folder_path + '/' + self.data[idx],cv2.COLOR_BGR2RGB)
@@ -45,24 +67,34 @@ class XDoGTrainData():
         noise = np.random.normal(0, 1, 256)
         is_xdog = random.choice([True, False])
         if is_xdog: ## return xdog image
-            x, y = xdog(img,sigma=sigma_rand,k=self.k,gamma=self.gamma,epsilon=self.epsilon,phi=self.phi)
+            line, color = xdog(img,sigma=sigma_rand,k=self.k,gamma=self.gamma,epsilon=self.epsilon,phi=self.phi)
         else: ## return original image
-            x, y = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
-        return x, noise,y
+            line, color = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
+        line, color = np.transpose(line,(2,0,1)), np.transpose(color,(2,0,1))
+        tran_color = torch.Tensor(color)
+        tran_color = self.transform(tran_color)
+        
+        ### draw random line on picture
+        tran_color = draw_random_line(tran_color,(100,150))
+        tran_color = self.rotate(tran_color)
+
+
+        line, color, tran_color = np.transpose(line,(1,2,0)), np.transpose(color,(1,2,0)), np.transpose(tran_color,(1,2,0))
+        return line, color, tran_color, noise
     
     def __len__(self):
         return len(self.data)
 
-class XDoGValData():
-    def __init__(self,folder_path):
-        self.folder_path = folder_path
-        self.data = os.listdir(folder_path)
+# class XDoGValData():
+#     def __init__(self,folder_path):
+#         self.folder_path = folder_path
+#         self.data = os.listdir(folder_path)
 
-    def __getitem__(self,idx):
-        img = cv2.imread(self.folder_path + '/' + self.data[idx],cv2.COLOR_BGR2RGB)
-        noise = np.random.normal(0, 1, 256)
-        x, y = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
-        return x, noise,y
+#     def __getitem__(self,idx):
+#         img = cv2.imread(self.folder_path + '/' + self.data[idx],cv2.COLOR_BGR2RGB)
+#         noise = np.random.normal(0, 1, 256)
+#         line, color = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
+#         return line, color, noise
     
-    def __len__(self):
-        return len(self.data)        
+#     def __len__(self):
+#         return len(self.data)       
