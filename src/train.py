@@ -1,5 +1,5 @@
 
-from model import Discriminator, Generator
+from src.model import Discriminator, Generator
 from torch import optim
 from util import random_transform, show_image
 from torch.nn import functional as F
