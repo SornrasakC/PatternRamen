@@ -13,8 +13,7 @@ class Training():
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
-    self.vgg16 = models.vgg16(pretrained=True).features[:12]
-    print(self.vgg16.features)
+    self.vgg16 = models.vgg16(pretrained=True).features[:25]
     self.vgg16.eval()
     self.discriminator_line.cuda()
     self.discriminator_color.cuda()
@@ -23,7 +22,8 @@ class Training():
 
   def train(self, dataLoader, valDataLoader, iterations):
     wandb.init(project="colorization")
-    wandb.watch(self.discriminator)
+    wandb.watch(self.discriminator_line)
+    wandb.watch(self.discriminator_color)
     wandb.watch(self.generator)
     
     g_optimizer = optim.Adam(self.generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
