@@ -1,4 +1,3 @@
-import torch
 from torch import nn
 from src.block import DiscriminatorBlock, GeneratorEncoderBlock, SPADEResBlock
 
@@ -7,19 +6,17 @@ class Discriminator(nn.Module):
     def __init__(self):
         super().__init__()
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
-        
-        self.block_1 = DiscriminatorBlock(3, 64, **dis_block_options)
-        self.block_2 = DiscriminatorBlock(64, 128, **dis_block_options)
-        self.block_3 = DiscriminatorBlock(128, 256, **dis_block_options) # ()
-        self.block_4 = DiscriminatorBlock(256, 512, **dis_block_options) # (19, 19, C)
-        self.conv = nn.Conv2d(512, 1, 4, 1) # (16, 16, 1)
+
+        self.blocks = nn.Sequential(
+            DiscriminatorBlock(3, 64, **dis_block_options),
+            DiscriminatorBlock(64, 128, **dis_block_options),
+            DiscriminatorBlock(128, 256, **dis_block_options),
+            DiscriminatorBlock(256, 512, **dis_block_options),
+            nn.Conv2d(512, 1, 4, 1, 1),
+        )
 
     def forward(self, x):
-        x = self.block_1(x)
-        x = self.block_2(x)
-        x = self.block_3(x)
-        x = self.block_4(x)
-        x = self.conv(x)
+        x = self.blocks(x)
         return x
 
 
