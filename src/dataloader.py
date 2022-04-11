@@ -51,9 +51,10 @@ class XDoGData():
         self.epsilon = param['eps']
         self.k = param['k']
         self.sigma = param['sigma']
-        transform = nn.Sequential(transforms.RandomRotation(60,fill=255),
+        transform = nn.Sequential(transforms.Resize((256,256)),
+                                  transforms.RandomRotation(60,fill=255),
                                   transforms.RandomPerspective(distortion_scale=0.3,p=1.0,fill=255),
-                                  transforms.RandomResizedCrop((512,512),scale=(0.8, 1.0)),
+                                  transforms.RandomResizedCrop((256,256),scale=(0.8, 1.0)),
                                   transforms.RandomHorizontalFlip(p=0.5),
                                   # transforms.RandomVerticalFlip(p=0.5),
                                   )
@@ -70,12 +71,13 @@ class XDoGData():
             line, color = xdog(img,sigma=sigma_rand,k=self.k,gamma=self.gamma,epsilon=self.epsilon,phi=self.phi)
         else: ## return original image
             line, color = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
+        line, color = cv2.resize(line,(256,256)), cv2.resize(color,(256,256))
         line, color = np.transpose(line,(2,0,1)), np.transpose(color,(2,0,1))
         tran_color = torch.Tensor(color)
         tran_color = self.transform(tran_color)
         
         ### draw random line on picture
-        tran_color = draw_random_line(tran_color,(100,150))
+        tran_color = draw_random_line(tran_color,(50,75))
         tran_color = self.rotate(tran_color)
 
 
