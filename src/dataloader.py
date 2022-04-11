@@ -79,7 +79,7 @@ class XDoGData():
         tran_color = self.rotate(tran_color)
 
 
-        line, color, tran_color = np.transpose(line,(1,2,0)), np.transpose(color,(1,2,0)), np.transpose(tran_color,(1,2,0))
+        # line, color, tran_color = np.transpose(line,(1,2,0)), np.transpose(color,(1,2,0)), np.transpose(tran_color,(1,2,0))
         return line, color, tran_color, noise
     
     def __len__(self):
