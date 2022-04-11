@@ -33,6 +33,11 @@ class Training():
     
     for _it in range(iterations):
       line, color, transform_color, noise = next(dataLoader)
+      line.cuda()
+      color.cuda()
+      transform_color.cuda()
+      noise.cuda()
+      
       d_optimizer_line.zero_grad()
       d_optimizer_color.zero_grad()
 
