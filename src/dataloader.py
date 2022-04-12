@@ -53,7 +53,7 @@ class XDoGData():
         self.sigma = param['sigma']
         transform = nn.Sequential(transforms.Resize((256,256)),
                                   transforms.RandomRotation(60,fill=255),
-                                  transforms.RandomPerspective(distortion_scale=0.3,p=1.0,fill=255),
+                                  transforms.RandomPerspective(distortion_scale=0.6,p=1.0,fill=255),
                                   transforms.RandomResizedCrop((256,256),scale=(0.8, 1.0)),
                                   transforms.RandomHorizontalFlip(p=0.5),
                                   # transforms.RandomVerticalFlip(p=0.5),
