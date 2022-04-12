@@ -43,7 +43,7 @@ def draw_random_line(img,line_range):
     return img
 
 class XDoGData():
-    def __init__(self,param,folder_path):
+    def __init__(self,param,folder_path,is_validate = False):
         self.folder_path = folder_path
         self.data = os.listdir(folder_path)
         self.gamma = param['gamma']
@@ -51,6 +51,7 @@ class XDoGData():
         self.epsilon = param['eps']
         self.k = param['k']
         self.sigma = param['sigma']
+        self.is_validate = is_validate
         transform = nn.Sequential(transforms.Resize((256,256)),
                                   transforms.RandomRotation(60,fill=255),
                                   transforms.RandomPerspective(distortion_scale=0.6,p=1.0,fill=255),
@@ -73,6 +74,8 @@ class XDoGData():
             line, color = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
         line, color = cv2.resize(line,(256,256)), cv2.resize(color,(256,256))
         line, color = np.transpose(line,(2,0,1)), np.transpose(color,(2,0,1))
+        if self.is_validate:
+            return line, color, noise
         tran_color = torch.Tensor(color)
         tran_color = self.transform(tran_color)
         
