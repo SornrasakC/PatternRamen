@@ -33,10 +33,10 @@ def xdog(img,sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1):
 
 def draw_random_line(img,line_range):
     width = np.random.randint(*line_range)
-    start = np.random.randint(0,512-width)
+    start = np.random.randint(0,256-width)
     end = np.random.randint(0+start,start+width)
     spray_color = np.random.randint(0,255,3)
-    spray_color = np.tile(spray_color,(512,1))
+    spray_color = np.tile(spray_color,(256,1))
     spray_color = np.tile(spray_color,(end-start,1,1))
     spray_color = np.transpose(spray_color,(2,1,0))
     img[:,:,start:end] = torch.Tensor(spray_color)
