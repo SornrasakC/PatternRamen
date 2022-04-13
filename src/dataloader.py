@@ -60,8 +60,8 @@ class XDoGData():
                                   # transforms.RandomVerticalFlip(p=0.5),
                                   )
         self.transform = torch.jit.script(transform)
-        rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
-        self.rotate = torch.jit.script(rotate)
+        # rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
+        # self.rotate = torch.jit.script(rotate)
 
     def __getitem__(self,idx):
         img = cv2.imread(self.folder_path + '/' + self.data[idx],cv2.COLOR_BGR2RGB)
@@ -80,8 +80,10 @@ class XDoGData():
         tran_color = self.transform(tran_color)
         
         ### draw random line on picture
+        rotate_angle = np.random.uniform(-60,60,1)[0]
+        tran_color = transforms.functional.rotate(tran_color,rotate_angle,fill=255)
         tran_color = draw_random_line(tran_color,(50,75))
-        tran_color = self.rotate(tran_color)
+        tran_color = transforms.functional.rotate(tran_color,-rotate_angle,fill=255)
 
 
         # line, color, tran_color = np.transpose(line,(1,2,0)), np.transpose(color,(1,2,0)), np.transpose(tran_color,(1,2,0))
