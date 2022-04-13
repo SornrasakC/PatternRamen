@@ -7,6 +7,7 @@ from torch import nn
 import torch
 import wandb
 import torchvision.models as models
+from tqdm import tqdm
 
 class Training():
   def __init__(self):
@@ -31,12 +32,12 @@ class Training():
     d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=0.0002, betas=(0.5, 0.999))
     d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0002, betas=(0.5, 0.999))
     
-    for _it in range(iterations):
+    for _it in tqdm(range(iterations)):
       line, color, transform_color, noise = next(dataLoader)
-      line.cuda()
-      color.cuda()
-      transform_color.cuda()
-      noise.cuda()
+      line = line.cuda().to(dtype=torch.float32)
+      color = color.cuda().to(dtype=torch.float32)
+      transform_color = transform_color.cuda().to(dtype=torch.float32)
+      noise = noise.cuda().to(dtype=torch.float32)
       
       d_optimizer_line.zero_grad()
       d_optimizer_color.zero_grad()
@@ -58,10 +59,10 @@ class Training():
       g_optimizer.step()
       
       wandb.log({"g_loss": g_loss, "d_loss": d_loss})
-      if(_it % 500==0):
+      if(_it % 100==0):
         print("Iteration: {}/{}".format(_it, iterations), "g_loss: {:.4f}".format(g_loss), "d_loss: {:.4f}".format(d_loss))
       
-      if(_it % 2000==0):
+      if(_it % 100==0):
         pics = self.inference(valDataLoader)
         for pic in pics[:10]:
           show_image(pic)
@@ -72,5 +73,10 @@ class Training():
     pics = []
     for _it in range(10):
       line, color, noise = next(dataLoader)
-      pics.append(self.generator(line, color, noise).squeeze().permute(1,2,0).detach().cpu())
+      line = line.cuda().to(dtype=torch.float32)
+      color = color.cuda().to(dtype=torch.float32)
+      noise = noise.cuda().to(dtype=torch.float32)
+      generated_images = self.generator(line, color, noise)
+      for im in generated_images:
+        pics.append(im.squeeze().permute(1,2,0).detach().cpu())
     return pics
