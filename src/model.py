@@ -18,6 +18,7 @@ class Discriminator(nn.Module):
     def forward(self, x1, x2):
         x = torch.cat((x1, x2), dim=1)
         x = self.blocks(x)
+        x = torch.sigmoid(x)
         return x
 
 
