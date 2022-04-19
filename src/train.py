@@ -28,9 +28,9 @@ class Training():
     wandb.watch(self.discriminator_color)
     wandb.watch(self.generator)
     
-    g_optimizer = optim.Adam(self.generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
-    d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=0.0002, betas=(0.5, 0.999))
-    d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0002, betas=(0.5, 0.999))
+    g_optimizer = optim.Adam(self.generator.parameters(), lr=0.0001, betas=(0.5, 0.999))
+    d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=0.0004, betas=(0.5, 0.999))
+    d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0004, betas=(0.5, 0.999))
     
     for _it in tqdm(range(iterations)):
       line, color, transform_color, noise = next(dataLoader)
@@ -47,14 +47,15 @@ class Training():
       d_loss_line = torch.mean((self.discriminator_line(line, color)-1)**2 + self.discriminator_line(line, generated_image.detach())**2)
       d_loss_color = torch.mean((self.discriminator_color(color, color)-1)**2 + self.discriminator_color(color, generated_image.detach())**2)
       
-      d_loss = d_loss_line + d_loss_color
+      d_loss = (d_loss_line + d_loss_color) / 2
       d_loss.backward()
       d_optimizer_color.step()      
       d_optimizer_line.step()
       
       g_optimizer.zero_grad()
       p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
-      g_loss = torch.mean((self.discriminator_line(line, generated_image) - 1)**2) + torch.mean((self.discriminator_color(color, generated_image) - 1)**2) + p_loss
+      pure_g_loss = torch.mean((self.discriminator_line(line, generated_image) - 1)**2) + torch.mean((self.discriminator_color(color, generated_image) - 1)**2)
+      g_loss = 0.5 * pure_g_loss + 1 * p_loss
       g_loss.backward()
       g_optimizer.step()
       
