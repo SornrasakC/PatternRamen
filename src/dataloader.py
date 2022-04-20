@@ -51,7 +51,6 @@ class XDoGData:
         self.sigma = param["sigma"]
         self.is_validate = is_validate
         transform = nn.Sequential(
-            transforms.Resize((256, 256)),
             transforms.RandomRotation(60, fill=255),
             transforms.RandomPerspective(distortion_scale=0.6, p=1.0, fill=255),
             transforms.RandomResizedCrop((256, 256), scale=(0.8, 1.0)),
@@ -59,6 +58,9 @@ class XDoGData:
             # transforms.RandomVerticalFlip(p=0.5),
         )
         self.transform = torch.jit.script(transform)
+
+        self.resize = torch.jit.script(transforms.Resize((256, 256)))
+        self.to_tensor = torch.jit.script(transforms.ToTensor())
         # rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
         # self.rotate = torch.jit.script(rotate)
 
@@ -67,6 +69,7 @@ class XDoGData:
         sigma_rand = np.random.uniform(self.sigma, self.sigma + 0.2)
         noise = np.random.normal(0, 1, 256)
         is_xdog = random.choice([True, False])
+
         if is_xdog:  ## return xdog image
             line, color = xdog(
                 img,
@@ -81,11 +84,11 @@ class XDoGData:
                 img[:, int(img.shape[1] / 2) :],
                 img[:, : int(img.shape[1] / 2)],
             )
-        line, color = cv2.resize(line, (256, 256)), cv2.resize(color, (256, 256))
-        line, color = np.transpose(line, (2, 0, 1)), np.transpose(color, (2, 0, 1))
+
+        line, color = self.resize(line), self.resize(color)
+        line, color = self.to_tensor(line), self.to_tensor(color)
         if self.is_validate:
             return line, color, noise
-        tran_color = torch.Tensor(color)
         tran_color = self.transform(tran_color)
 
         ### draw random line on picture
