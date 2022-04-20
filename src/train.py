@@ -1,7 +1,17 @@
 
 from src.model import Discriminator, Generator
 from torch import optim
-from src.util import show_image
+from src.util import show_image, show_image_row
+from torch.nn import functional as F
+from torch import nn
+import torch
+import wandb
+import torchvision.models as models
+from tqdm import tqdm
+
+from src.model import Discriminator, Generator
+from torch import optim
+from src.util import show_image, show_image_row
 from torch.nn import functional as F
 from torch import nn
 import torch
@@ -33,6 +43,7 @@ class Training():
     d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0004, betas=(0.5, 0.999))
     
     for _it in tqdm(range(iterations)):
+      self.generator.train()
       line, color, transform_color, noise = next(dataLoader)
       line = line.cuda().to(dtype=torch.float32)
       color = color.cuda().to(dtype=torch.float32)
@@ -55,7 +66,7 @@ class Training():
       g_optimizer.zero_grad()
       p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
       pure_g_loss = torch.mean((self.discriminator_line(line, generated_image) - 1)**2) + torch.mean((self.discriminator_color(color, generated_image) - 1)**2)
-      g_loss = 0.5 * pure_g_loss + 1 * p_loss
+      g_loss = pure_g_loss + 1 * p_loss / (16 * 16) # [BS, 512, 16, 16]
       g_loss.backward()
       g_optimizer.step()
       
@@ -64,9 +75,9 @@ class Training():
         print("Iteration: {}/{}".format(_it, iterations), "g_loss: {:.4f}".format(g_loss), "d_loss: {:.4f}".format(d_loss))
       
       if(_it % 100==0):
-        pics = self.inference(valDataLoader)
-        for pic in pics[:10]:
-          show_image(pic)
+        pic_rows = self.inference(valDataLoader)
+        for pic_row in pic_rows[:10]:
+          show_image_row(pic_row)
     wandb.finish()
   
   def inference(self, dataLoader):
@@ -78,6 +89,10 @@ class Training():
       color = color.cuda().to(dtype=torch.float32)
       noise = noise.cuda().to(dtype=torch.float32)
       generated_images = self.generator(line, color, noise)
-      for im in generated_images:
-        pics.append(im.squeeze().permute(1,2,0).detach().cpu())
+      for line_im, color_im, gen_im in zip(line, color, generated_images):
+        format_im = lambda im: im.squeeze().permute(1,2,0).detach().cpu()
+        gen_im = format_im(gen_im)
+        line_im = format_im(line_im).type(torch.int)
+        color_im = format_im(color_im).type(torch.int)
+        pics.append([line_im, color_im, gen_im])
     return pics
