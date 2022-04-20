@@ -69,7 +69,7 @@ class XDoGData:
         # self.rotate = torch.jit.script(rotate)
 
     def __getitem__(self, idx):
-        img = Image.open(self.folder_path + "/" + self.data[idx]).convert('RGB')
+        img = cv2.imread(self.folder_path + "/" + self.data[idx], cv2.COLOR_BGR2RGB).astype(np.float32)
         sigma_rand = np.random.uniform(self.sigma, self.sigma + 0.2)
         noise = np.random.normal(0, 1, 256)
         is_xdog = random.choice([True, False])
