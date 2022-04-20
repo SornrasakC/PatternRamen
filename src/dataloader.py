@@ -60,9 +60,8 @@ class XDoGData:
         self.train_transform = torch.jit.script(train_transform)
 
         self.transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((256,256)),
             transforms.ToTensor(),
+            transforms.Resize((256,256)),
             transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                 std=[0.5, 0.5, 0.5])
         ])
@@ -70,7 +69,7 @@ class XDoGData:
         # self.rotate = torch.jit.script(rotate)
 
     def __getitem__(self, idx):
-        img = cv2.imread(self.folder_path + "/" + self.data[idx], cv2.COLOR_BGR2RGB).astype(np.float32)
+        img = cv2.imread(self.folder_path + "/" + self.data[idx], cv2.COLOR_BGR2RGB).astype(np.uint8)
         sigma_rand = np.random.uniform(self.sigma, self.sigma + 0.2)
         noise = np.random.normal(0, 1, 256)
         is_xdog = random.choice([True, False])
