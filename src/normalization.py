@@ -9,7 +9,7 @@ class SPADE(nn.Module):
         self.param_free_norm = nn.InstanceNorm2d(in_channels, affine=False)
 
         # The dimension of the intermediate embedding space. Yes, hardcoded.
-        nhidden = 128
+        nhidden = segmap_channels // 4
 
         self.mlp_shared = nn.Sequential(
             nn.Conv2d(segmap_channels, nhidden, kernel_size=3, padding=1),

@@ -1,14 +1,3 @@
-
-from src.model import Discriminator, Generator
-from torch import optim
-from src.util import show_image, show_image_row
-from torch.nn import functional as F
-from torch import nn
-import torch
-import wandb
-import torchvision.models as models
-from tqdm import tqdm
-
 from src.model import Discriminator, Generator
 from torch import optim
 from src.util import show_image, show_image_row
@@ -38,9 +27,9 @@ class Training():
     wandb.watch(self.discriminator_color)
     wandb.watch(self.generator)
     
-    g_optimizer = optim.Adam(self.generator.parameters(), lr=0.0001, betas=(0.5, 0.999))
-    d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=0.0004, betas=(0.5, 0.999))
-    d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=0.0004, betas=(0.5, 0.999))
+    g_optimizer = optim.Adam(self.generator.parameters(), lr=1e-3, betas=(0.5, 0.999)) # paper lr 1e-4
+    d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 4e-4
+    d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 4e-4
     
     for _it in tqdm(range(iterations)):
       self.generator.train()
@@ -83,16 +72,17 @@ class Training():
   def inference(self, dataLoader):
     self.generator.eval()
     pics = []
-    for _it in range(10):
-      line, color, noise = next(dataLoader)
-      line = line.cuda().to(dtype=torch.float32)
-      color = color.cuda().to(dtype=torch.float32)
-      noise = noise.cuda().to(dtype=torch.float32)
-      generated_images = self.generator(line, color, noise)
-      for line_im, color_im, gen_im in zip(line, color, generated_images):
-        format_im = lambda im: im.squeeze().permute(1,2,0).detach().cpu()
-        gen_im = format_im(gen_im)
-        line_im = format_im(line_im).type(torch.int)
-        color_im = format_im(color_im).type(torch.int)
-        pics.append([line_im, color_im, gen_im])
+    with torch.no_grad():
+      for _it in range(10):
+        line, color, noise = next(dataLoader)
+        line = line.cuda().to(dtype=torch.float32)
+        color = color.cuda().to(dtype=torch.float32)
+        noise = noise.cuda().to(dtype=torch.float32)
+        generated_images = self.generator(line, color, noise)
+        for line_im, color_im, gen_im in zip(line, color, generated_images):
+          format_im = lambda im: im.squeeze().permute(1,2,0).detach().cpu()
+          gen_im = format_im(gen_im)
+          line_im = format_im(line_im).type(torch.int)
+          color_im = format_im(color_im).type(torch.int)
+          pics.append([line_im, color_im, gen_im])
     return pics
