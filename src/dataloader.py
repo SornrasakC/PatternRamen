@@ -91,7 +91,7 @@ class XDoGData:
         line, color = self.transform(line), self.transform(color)
         if self.is_validate:
             return line, color, noise
-        tran_color = self.train_transform(tran_color)
+        tran_color = self.train_transform(color)
 
         ### draw random line on picture
         rotate_angle = np.random.uniform(-60, 60, 1)[0]
