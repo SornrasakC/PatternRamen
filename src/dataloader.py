@@ -50,13 +50,13 @@ class XDoGData:
         self.k = param["k"]
         self.sigma = param["sigma"]
         self.is_validate = is_validate
-        train_transform = transforms.Compose(
+        train_transform = transforms.Compose([
             transforms.RandomRotation(60, fill=255),
             transforms.RandomPerspective(distortion_scale=0.6, p=1.0, fill=255),
             transforms.RandomResizedCrop((256, 256), scale=(0.8, 1.0)),
             transforms.RandomHorizontalFlip(p=0.5),
             # transforms.RandomVerticalFlip(p=0.5),
-        )
+        ])
         self.train_transform = torch.jit.script(train_transform)
 
         self.transform = transforms.Compose([
