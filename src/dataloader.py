@@ -85,8 +85,8 @@ class XDoGData:
                 img[:, : int(img.shape[1] / 2)],
             )
 
-        line, color = self.resize(line), self.resize(color)
         line, color = self.to_tensor(line), self.to_tensor(color)
+        line, color = self.resize(line), self.resize(color)
         if self.is_validate:
             return line, color, noise
         tran_color = self.transform(tran_color)
