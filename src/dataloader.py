@@ -59,8 +59,8 @@ class XDoGData:
         )
         self.transform = torch.jit.script(transform)
 
-        self.resize = torch.jit.script(transforms.Resize((256, 256)))
-        self.to_tensor = torch.jit.script(transforms.ToTensor())
+        self.resize = transforms.Resize((256, 256))
+        self.to_tensor = transforms.ToTensor()
         # rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
         # self.rotate = torch.jit.script(rotate)
 
