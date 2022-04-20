@@ -55,7 +55,7 @@ class Training():
       g_optimizer.zero_grad()
       p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
       pure_g_loss = torch.mean((self.discriminator_line(line, generated_image) - 1)**2) + torch.mean((self.discriminator_color(color, generated_image) - 1)**2)
-      g_loss = pure_g_loss + 1 * p_loss / (16 * 16) # [BS, 512, 16, 16]
+      g_loss = pure_g_loss + 1 * p_loss #/ (16 * 16) # [BS, 512, 16, 16]
       g_loss.backward()
       g_optimizer.step()
       
@@ -82,7 +82,7 @@ class Training():
         for line_im, color_im, gen_im in zip(line, color, generated_images):
           format_im = lambda im: im.squeeze().permute(1,2,0).detach().cpu()
           gen_im = format_im(gen_im)
-          line_im = format_im(line_im).type(torch.int)
-          color_im = format_im(color_im).type(torch.int)
+          line_im = format_im(line_im)#.type(torch.int)
+          color_im = format_im(color_im)#.type(torch.int)
           pics.append([line_im, color_im, gen_im])
     return pics
