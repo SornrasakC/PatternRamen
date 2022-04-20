@@ -60,6 +60,7 @@ class XDoGData:
         self.train_transform = torch.jit.script(train_transform)
 
         self.transform = transforms.Compose([
+            transforms.ToPILImage(),
             transforms.Resize((256,256)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5],
