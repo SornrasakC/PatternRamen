@@ -81,8 +81,11 @@ class Training():
         generated_images = self.generator(line, color, noise)
         for line_im, color_im, gen_im in zip(line, color, generated_images):
           format_im = lambda im: im.squeeze().permute(1,2,0).detach().cpu()
-          gen_im = format_im(gen_im)
-          line_im = format_im(line_im)#.type(torch.int)
-          color_im = format_im(color_im)#.type(torch.int)
+          un_norm = lambda data: (0.5 * data + 0.5)#[..., ::-1]
+          un_norm_im = lambda im: un_norm(format_im(im))
+
+          gen_im = un_norm_im(gen_im)
+          line_im = un_norm_im(line_im)#.type(torch.int)
+          color_im = un_norm_im(color_im)#.type(torch.int)
           pics.append([line_im, color_im, gen_im])
     return pics
