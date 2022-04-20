@@ -50,17 +50,20 @@ class XDoGData:
         self.k = param["k"]
         self.sigma = param["sigma"]
         self.is_validate = is_validate
-        transform = nn.Sequential(
+        train_transform = transforms.Compose(
             transforms.RandomRotation(60, fill=255),
             transforms.RandomPerspective(distortion_scale=0.6, p=1.0, fill=255),
             transforms.RandomResizedCrop((256, 256), scale=(0.8, 1.0)),
             transforms.RandomHorizontalFlip(p=0.5),
             # transforms.RandomVerticalFlip(p=0.5),
         )
-        self.transform = torch.jit.script(transform)
+        self.train_transform = torch.jit.script(train_transform)
 
-        self.resize = transforms.Resize((256, 256))
-        self.to_tensor = transforms.ToTensor()
+        self.transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize((256,256)),
+            transforms.ToTensor()
+        ])
         # rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
         # self.rotate = torch.jit.script(rotate)
 
@@ -85,11 +88,10 @@ class XDoGData:
                 img[:, : int(img.shape[1] / 2)],
             )
 
-        line, color = self.to_tensor(line), self.to_tensor(color)
-        line, color = self.resize(line), self.resize(color)
+        line, color = self.transform(line), self.transform(color)
         if self.is_validate:
             return line, color, noise
-        tran_color = self.transform(tran_color)
+        tran_color = self.train_transform(tran_color)
 
         ### draw random line on picture
         rotate_angle = np.random.uniform(-60, 60, 1)[0]
