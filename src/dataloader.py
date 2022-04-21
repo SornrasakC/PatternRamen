@@ -61,7 +61,6 @@ class XDoGData:
 
         self.transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((256,256)),
             transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                 std=[0.5, 0.5, 0.5])
         ])
@@ -74,6 +73,7 @@ class XDoGData:
         sigma_rand = np.random.uniform(self.sigma, self.sigma + 0.2)
         noise = np.random.normal(0, 1, 256)
         is_xdog = random.choice([True, False])
+        img = cv2.resize(img,(512,256))
 
         if is_xdog:  ## return xdog image
             line, color = xdog(
