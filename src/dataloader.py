@@ -93,7 +93,7 @@ class XDoGData:
         line = self.transform(line)
         if self.is_validate:
             return line, self.transform(color), noise
-        tran_color = self.train_transform(color)
+        tran_color = self.train_transform(torch.Tensor(np.transpose(color,(2,0,1))))
 
         ### draw random line on picture
         rotate_angle = np.random.uniform(-60, 60, 1)[0]
@@ -101,7 +101,8 @@ class XDoGData:
         tran_color = draw_random_line(tran_color, (50, 75))
         tran_color = transforms.functional.rotate(tran_color, -rotate_angle, fill=255)
 
-        color, tran_color = self.transform(color), self.transform(tran_color)
+        # color, tran_color = self.transform(color), self.transform(tran_color)
+        color, tran_color = self.transform(color), self.transform(np.transpose(tran_color.numpy(),(1,2,0)))
 
         # line, color, tran_color = np.transpose(line,(1,2,0)), np.transpose(color,(1,2,0)), np.transpose(tran_color,(1,2,0))
         return line, color, tran_color, noise
