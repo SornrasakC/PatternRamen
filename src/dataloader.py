@@ -59,21 +59,22 @@ class XDoGData:
         )
         self.train_transform = torch.jit.script(train_transform)
 
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                std=[0.5, 0.5, 0.5])
-        ])
+        self.transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+            ]
+        )
         # rotate = nn.Sequential(transforms.RandomRotation(60,fill=255))
         # self.rotate = torch.jit.script(rotate)
 
     def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.folder_path, self.data[idx])).convert('RGB')
+        img = Image.open(os.path.join(self.folder_path, self.data[idx])).convert("RGB")
         img = np.asarray(img, dtype=np.uint8)
         sigma_rand = np.random.uniform(self.sigma, self.sigma + 0.2)
         noise = np.random.normal(0, 1, 256)
         is_xdog = random.choice([True, False])
-        img = cv2.resize(img,(512,256))
+        img = cv2.resize(img, (512, 256))
 
         if is_xdog:  ## return xdog image
             line, color = xdog(
@@ -90,10 +91,10 @@ class XDoGData:
                 img[:, : int(img.shape[1] / 2)],
             )
 
-        line = self.transform(line)
+        line = self.transform(line.astype(np.uint8))
         if self.is_validate:
             return line, self.transform(color), noise
-        tran_color = self.train_transform(torch.Tensor(np.transpose(color,(2,0,1))))
+        tran_color = self.train_transform(torch.Tensor(np.transpose(color, (2, 0, 1))))
 
         ### draw random line on picture
         rotate_angle = np.random.uniform(-60, 60, 1)[0]
@@ -102,25 +103,12 @@ class XDoGData:
         tran_color = transforms.functional.rotate(tran_color, -rotate_angle, fill=255)
 
         # color, tran_color = self.transform(color), self.transform(tran_color)
-        color, tran_color = self.transform(color), self.transform(np.transpose(tran_color.numpy(),(1,2,0)))
+        color, tran_color = self.transform(color), self.transform(
+            np.transpose(tran_color.numpy().astype(np.uint8), (1, 2, 0))
+        )
 
         # line, color, tran_color = np.transpose(line,(1,2,0)), np.transpose(color,(1,2,0)), np.transpose(tran_color,(1,2,0))
         return line, color, tran_color, noise
 
     def __len__(self):
         return len(self.data)
-
-
-# class XDoGValData():
-#     def __init__(self,folder_path):
-#         self.folder_path = folder_path
-#         self.data = os.listdir(folder_path)
-
-#     def __getitem__(self,idx):
-#         img = cv2.imread(self.folder_path + '/' + self.data[idx],cv2.COLOR_BGR2RGB)
-#         noise = np.random.normal(0, 1, 256)
-#         line, color = img[:,int(img.shape[1]/2):], img[:,:int(img.shape[1]/2)]
-#         return line, color, noise
-
-#     def __len__(self):
-#         return len(self.data)
