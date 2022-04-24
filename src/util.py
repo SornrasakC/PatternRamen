@@ -12,4 +12,5 @@ def show_image_row(imgs):
   f.set_figwidth(15)
   for ax, img in zip(axs, imgs):
       ax.imshow(img)
+      ax.axis('off')
   plt.show() # or display.display(plt.gcf()) if you prefer
