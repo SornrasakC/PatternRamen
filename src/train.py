@@ -26,7 +26,7 @@ class Training():
 
     self.iteration = 0
 
-    if checkpoint_path is not None:
+    if checkpoint_path != None:
       self.load_checkpoint(checkpoint_path)
 
   def init_optimizers(self):
