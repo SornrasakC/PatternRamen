@@ -121,7 +121,7 @@ class Training():
   def load_checkpoint(self, checkpoint_path):
     assert os.path.isfile(checkpoint_path)
 
-    pack_dict = torch.load(checkpoint_path, location='cpu')
+    pack_dict = torch.load(checkpoint_path, map_location='cpu')
 
     self.discriminator_line.load_state_dict(pack_dict['discriminator_line'])
     self.discriminator_color.load_state_dict(pack_dict['discriminator_color'])

@@ -18,9 +18,9 @@ def show_image_row(imgs):
 
 def pack_checkpoint(discriminator_line, discriminator_color, generator, g_optimizer, d_optimizer_line, d_optimizer_color, iteration):
   pack_dict = {
-    'discriminator_line': discriminator_line,
-    'discriminator_color': discriminator_color,
-    'generator': generator,
+    'discriminator_line': discriminator_line.state_dict(),
+    'discriminator_color': discriminator_color.state_dict(),
+    'generator': generator.state_dict(),
     'g_optimizer': g_optimizer.state_dict(),
     'd_optimizer_line': d_optimizer_line.state_dict(),
     'd_optimizer_color': d_optimizer_color.state_dict(),
