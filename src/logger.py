@@ -28,7 +28,7 @@ class Logger:
 
     def log_image(self, np_image, log_msg='Validation image', caption=None, is_img_list=False, **kw):
         if is_img_list:
-            image = [wandb.Image(np_image, caption=caption) for image in np_image]
+            image = [wandb.Image(im, caption=caption) for im in np_image]
         else:
             image = wandb.Image(np_image, caption=caption)
 
