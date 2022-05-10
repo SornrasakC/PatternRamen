@@ -71,23 +71,27 @@ class Trainer():
       g_loss.backward()
       self.g_optimizer.step()
       
-      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
-      
       if _it % self.checkpoint_interval == 0:
         print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
         self.save_checkpoint(iteration=_it)
 
+        log_kw = {'caption': f'Iteration: {_it}', 'commit': False, 'iteration': _it}
+
         print('Validate Images')
         pic_row_list = self.inference(valDataLoader)[:5]
-        self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', caption=f'Iteration: {_it}')
+        self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
 
         print('Training Images')
         pic_row_list = self.inference(dataLoader, dataLoaderType='train')[:5]
-        self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', caption=f'Iteration: {_it}')
+        self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
+
+        pass
+      
+      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
 
     self.logger.finish()
     self.iteration += iterations
