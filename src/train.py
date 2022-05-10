@@ -40,7 +40,8 @@ class Trainer():
   def train(self, dataLoader, valDataLoader, iterations):
     self.logger.watch(self)
     
-    for _it in tqdm(range(iterations)):
+    total_it = self.iteration + iterations
+    for _it in tqdm(range(self.iteration + 1, total_it + 1)):
       self.generator.train()
       line, color, transform_color, noise = next(dataLoader)
       line = line.cuda().to(dtype=torch.float32)
@@ -68,21 +69,18 @@ class Trainer():
       g_loss.backward()
       self.g_optimizer.step()
       
-      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss)
+      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
       if _it % 100 == 0:
-        curr_it = _it + self.iteration
-        total_it = iterations + self.iteration
-
-        print(f"[Iteration: {curr_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
+        print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
       
       if _it % 100 == 0:
         pic_rows = self.inference(valDataLoader)
         for pic_row in pic_rows[:10]:
-          self.logger.log_image_row(pic_row, caption=f'Iteration: {_it + self.iteration}')
+          self.logger.log_image_row(pic_row, caption=f'Iteration: {_it}')
           show_image_row(pic_row)
 
       if _it % 100 == 0:
-        self.save_checkpoint(iteration=self.iteration + _it)
+        self.save_checkpoint(iteration=_it)
 
     self.logger.finish()
     self.iteration += iterations

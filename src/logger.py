@@ -23,8 +23,8 @@ class Logger:
         wandb.watch(trainer.discriminator_color)
         wandb.watch(trainer.generator)
 
-    def log_losses(self, g_loss, d_loss):
-        wandb.log({"g_loss": g_loss, "d_loss": d_loss})
+    def log_losses(self, g_loss, d_loss, iteration):
+        wandb.log({"g_loss": g_loss, "d_loss": d_loss, "iteration": iteration})
 
     def log_image(self, np_image, log_msg='Validation image', caption=None, **kw):
         image = wandb.Image(np_image, caption=caption)
