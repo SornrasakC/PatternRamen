@@ -2,7 +2,7 @@ import wandb
 
 
 class Logger:
-    def __init__(self, wandb_run_id=None, checkpoint_path=checkpoint_path, disable_wandb=False):
+    def __init__(self, wandb_run_id=None, checkpoint_path=None, disable_wandb=False):
         self.disable_wandb = disable_wandb
         self.wandb_run_id = wandb_run_id
         self.checkpoint_path = checkpoint_path
