@@ -1,5 +1,5 @@
 import wandb
-
+import numpy as np
 
 class Logger:
     def __init__(self, wandb_run_id=None, checkpoint_path=None, disable_wandb=False):
