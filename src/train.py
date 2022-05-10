@@ -40,6 +40,7 @@ class Trainer():
   def train(self, dataLoader, valDataLoader, iterations):
     self.logger.watch(self)
     
+    print(f'Starting on iteration: {self.iteration}')
     total_it = self.iteration + iterations
     for _it in tqdm(range(self.iteration + 1, total_it + 1)):
       self.generator.train()
@@ -74,9 +75,16 @@ class Trainer():
         print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
       
       if _it % 100 == 0:
+        print('Validate Images')
         pic_rows = self.inference(valDataLoader)
-        for pic_row in pic_rows[:10]:
-          self.logger.log_image_row(pic_row, caption=f'Iteration: {_it}')
+        for pic_row in pic_rows[:5]:
+          self.logger.log_image_row(pic_row, log_msg='Validation Images', caption=f'Iteration: {_it}')
+          show_image_row(pic_row)
+
+        print('Training Images')
+        pic_rows = self.inference(dataLoader, dataLoaderType='train')
+        for pic_row in pic_rows[:5]:
+          self.logger.log_image_row(pic_row, log_msg='Training Images', caption=f'Iteration: {_it}')
           show_image_row(pic_row)
 
       if _it % 100 == 0:
@@ -86,14 +94,20 @@ class Trainer():
     self.iteration += iterations
     self.save_checkpoint()
   
-  def inference(self, dataLoader):
+  def inference(self, dataLoader, dataLoaderType='validate'):
     self.generator.eval()
     pic_row = []
     with torch.no_grad():
       for _it in range(10):
         if len(pic_row) > 10:
           break
-        line, color, noise = next(dataLoader)
+        if dataLoaderType == 'validate':
+          line, color, noise = next(dataLoader)
+        elif dataLoaderType == 'train':
+          line, color, transform_color, noise = next(dataLoader)
+        else:
+          raise NotImplemented
+
         line = line.cuda().to(dtype=torch.float32)
         color = color.cuda().to(dtype=torch.float32)
         noise = noise.cuda().to(dtype=torch.float32)
@@ -124,6 +138,8 @@ class Trainer():
     if checkpoint_path == 'latest':
       checkpoint_path = get_latest_checkpoint()
     assert os.path.isfile(checkpoint_path)
+
+    print(f'Loading checkpoint: {checkpoint_path}')
 
     pack_dict = torch.load(checkpoint_path, map_location='cpu')
 
