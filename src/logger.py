@@ -68,10 +68,10 @@ class TimeLogger:
         self.disabled = disabled
         
     
-    def start():
+    def start(self):
         self.start_time = time.time()
 
-    def check(msg='', reset=True):
+    def check(self, msg='', reset=True):
         time_passed = time.time() - self.start_time
 
         if self.disabled:
