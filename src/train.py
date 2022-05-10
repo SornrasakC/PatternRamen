@@ -1,20 +1,22 @@
 from src.model import Discriminator, Generator
+from src.util import show_image, show_image_row, pack_checkpoint, gen_checkpoint_path, get_latest_checkpoint
+from src.logger import Logger
+
+import torch
 from torch import optim
-from src.util import show_image, show_image_row, pack_checkpoint, gen_checkpoint_path
 from torch.nn import functional as F
 from torch import nn
-import torch
-import wandb
-import torchvision.models as models
+import torchvision
+
 from tqdm import tqdm
 import os
 
-class Training():
-  def __init__(self, checkpoint_path=None):
+class Trainer():
+  def __init__(self, checkpoint_path=None, wandb_run_id=None):
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
-    self.vgg16 = models.vgg16(pretrained=True).features[:25]
+    self.vgg16 = torchvision.models.vgg16(pretrained=True).features[:25]
     self.vgg16.cuda()
     self.vgg16.eval()
     self.discriminator_line.cuda()
@@ -25,6 +27,7 @@ class Training():
     self.init_optimizers()
 
     self.iteration = 0
+    self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
 
     if checkpoint_path != None:
       self.load_checkpoint(checkpoint_path)
@@ -35,10 +38,7 @@ class Training():
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 4e-4
 
   def train(self, dataLoader, valDataLoader, iterations):
-    wandb.init(project="colorization")
-    wandb.watch(self.discriminator_line)
-    wandb.watch(self.discriminator_color)
-    wandb.watch(self.generator)
+    self.logger.watch(self)
     
     for _it in tqdm(range(iterations)):
       self.generator.train()
@@ -68,19 +68,23 @@ class Training():
       g_loss.backward()
       self.g_optimizer.step()
       
-      wandb.log({"g_loss": g_loss, "d_loss": d_loss})
-      if(_it % 100==0):
-        print("Iteration: {}/{}".format(_it + self.iteration, iterations + self.iteration), "g_loss: {:.4f}".format(g_loss), "d_loss: {:.4f}".format(d_loss))
+      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss)
+      if _it % 100 == 0:
+        curr_it = _it + self.iteration
+        total_it = iterations + self.iteration
+
+        print(f"[Iteration: {curr_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
       
-      if(_it % 100==0):
+      if _it % 100 == 0:
         pic_rows = self.inference(valDataLoader)
         for pic_row in pic_rows[:10]:
+          self.logger.log_image_row(pic_row)
           show_image_row(pic_row)
 
-      if(_it % 100==0):
+      if _it % 100 == 0:
         self.save_checkpoint(iteration=self.iteration + _it)
 
-    wandb.finish()
+    self.logger.finish()
     self.iteration += iterations
     self.save_checkpoint()
   
@@ -119,6 +123,8 @@ class Training():
     torch.save(pack_dict, filepath)
 
   def load_checkpoint(self, checkpoint_path):
+    if checkpoint_path == 'latest':
+      checkpoint_path = get_latest_checkpoint()
     assert os.path.isfile(checkpoint_path)
 
     pack_dict = torch.load(checkpoint_path, map_location='cpu')
