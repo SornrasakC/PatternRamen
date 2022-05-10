@@ -31,14 +31,14 @@ class Logger:
             image = [wandb.Image(np_image, caption=caption) for image in np_image]
         else:
             image = wandb.Image(np_image, caption=caption)
-            
+
         wandb.log({log_msg: image}, **kw)
 
     # def log_image_row(self, np_image_row, **kw):
     #     np_image = np.concatenate(np_image_row, axis=1)
     #     self.log_image(np_image, **kw)
 
-    def log_image_rows(self, np_image_rows, **kw):
+    def log_image_row_list(self, np_image_rows, **kw):
         np_images = [
             np.concatenate(np_image_row, axis=1) 
             for np_image_row in np_image_rows
