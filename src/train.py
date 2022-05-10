@@ -33,9 +33,9 @@ class Trainer():
       self.load_checkpoint(checkpoint_path)
 
   def init_optimizers(self):
-    self.g_optimizer = optim.Adam(self.generator.parameters(), lr=1e-3, betas=(0.5, 0.999)) # paper lr 1e-4
-    self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 4e-4
-    self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 4e-4
+    self.g_optimizer = optim.Adam(self.generator.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 1e-4
+    self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
+    self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
 
   def train(self, dataLoader, valDataLoader, iterations):
     self.logger.watch(self)
