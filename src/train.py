@@ -59,8 +59,8 @@ class Trainer():
       
       self.d_optimizer_line.zero_grad()
       self.d_optimizer_color.zero_grad()
+      self.time_logger.check('Preparation')
 
-      self.time_logger.start()
       generated_image = self.generator(line, transform_color, noise)
       self.time_logger.check('Generator forward')
 
@@ -89,6 +89,8 @@ class Trainer():
       self.g_optimizer.step()
       self.time_logger.check('G Optim Steps')
       
+      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
+      self.time_logger.check('Wandb Logging')
       if _it % self.checkpoint_interval == 0:
         print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
         self.save_checkpoint(iteration=_it)
@@ -108,8 +110,6 @@ class Trainer():
           show_image_row(pic_row)
         self.time_logger.check('Evaluation')
       
-      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
-      self.time_logger.check('Wandb Logging')
 
     self.logger.finish()
     self.iteration += iterations
