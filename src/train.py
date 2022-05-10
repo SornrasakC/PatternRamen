@@ -12,7 +12,7 @@ from tqdm import tqdm
 import os
 
 class Trainer():
-  def __init__(self, checkpoint_path=None, wandb_run_id=None):
+  def __init__(self, checkpoint_path=None, wandb_run_id=None, checkpoint_interval=100):
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
@@ -28,6 +28,7 @@ class Trainer():
 
     self.iteration = 0
     self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
+    self.checkpoint_interval = checkpoint_interval
 
     if checkpoint_path != None:
       self.load_checkpoint(checkpoint_path)
@@ -71,10 +72,11 @@ class Trainer():
       self.g_optimizer.step()
       
       self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
-      if _it % 100 == 0:
-        print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
       
-      if _it % 100 == 0:
+      if _it % self.checkpoint_interval == 0:
+        print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
+        self.save_checkpoint(iteration=_it)
+
         print('Validate Images')
         pic_rows = self.inference(valDataLoader)
         for pic_row in pic_rows[:5]:
@@ -85,10 +87,7 @@ class Trainer():
         pic_rows = self.inference(dataLoader, dataLoaderType='train')
         for pic_row in pic_rows[:5]:
           self.logger.log_image_row(pic_row, log_msg='Training Images', caption=f'Iteration: {_it}')
-          show_image_row(pic_row)
-
-      if _it % 100 == 0:
-        self.save_checkpoint(iteration=_it)
+          show_image_row(pic_row)        
 
     self.logger.finish()
     self.iteration += iterations
@@ -132,6 +131,7 @@ class Trainer():
     
     pack_dict = pack_checkpoint(self.discriminator_line, self.discriminator_color, self.generator, self.g_optimizer, self.d_optimizer_line, self.d_optimizer_color, iteration)
 
+    print(f'Saving Checkpoint: {filepath}')
     torch.save(pack_dict, filepath)
 
   def load_checkpoint(self, checkpoint_path):
@@ -139,7 +139,7 @@ class Trainer():
       checkpoint_path = get_latest_checkpoint()
     assert os.path.isfile(checkpoint_path)
 
-    print(f'Loading checkpoint: {checkpoint_path}')
+    print(f'Loading Checkpoint: {checkpoint_path}')
 
     pack_dict = torch.load(checkpoint_path, map_location='cpu')
 
