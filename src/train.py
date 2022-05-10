@@ -78,16 +78,16 @@ class Trainer():
         self.save_checkpoint(iteration=_it)
 
         print('Validate Images')
-        pic_rows = self.inference(valDataLoader)
-        for pic_row in pic_rows[:5]:
-          self.logger.log_image_row(pic_row, log_msg='Validation Images', caption=f'Iteration: {_it}')
+        pic_row_list = self.inference(valDataLoader)[:5]
+        self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', caption=f'Iteration: {_it}')
+        for pic_row in pic_row_list:
           show_image_row(pic_row)
 
         print('Training Images')
-        pic_rows = self.inference(dataLoader, dataLoaderType='train')
-        for pic_row in pic_rows[:5]:
-          self.logger.log_image_row(pic_row, log_msg='Training Images', caption=f'Iteration: {_it}')
-          show_image_row(pic_row)        
+        pic_row_list = self.inference(dataLoader, dataLoaderType='train')[:5]
+        self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', caption=f'Iteration: {_it}')
+        for pic_row in pic_row_list:
+          show_image_row(pic_row)
 
     self.logger.finish()
     self.iteration += iterations
