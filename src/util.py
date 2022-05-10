@@ -33,13 +33,14 @@ def pack_checkpoint(discriminator_line, discriminator_color, generator, g_optimi
 
 def get_latest_checkpoint():
     checkpoint_base = Path.cwd().parent / 'checkpoints'
-    _root, _subfolder, cp_list = next(os.walk(checkpoint_base))
+    _root, _subfolder, filename_list = next(os.walk(checkpoint_base))
+    cp_list = [fn for fn in filename_list if 'checkpoint_' in fn]
     assert len(cp_list) > 0
     
-    return checkpoint_base / max(cp_list, key=lambda cp: int(cp.split('-')[1]) )
+    return checkpoint_base / max(cp_list, key=lambda cp: int(cp.split('_')[1]) )
 
 def gen_checkpoint_path(iteration):
     checkpoint_base = Path.cwd().parent / 'checkpoints'
     checkpoint_base.mkdir(exist_ok=True)
-    checkpoint_fp = checkpoint_base / f'checkpoint-{iteration}'
+    checkpoint_fp = checkpoint_base / f'checkpoint_{iteration}'
     return str(checkpoint_fp)
