@@ -30,6 +30,7 @@ class Trainer():
     self.checkpoint_interval = checkpoint_interval
     self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
     self.time_logger = TimeLogger(disabled=disable_time_logger)
+    self.inference_size = 6
 
     if checkpoint_path != None:
       self.load_checkpoint(checkpoint_path)
@@ -95,13 +96,13 @@ class Trainer():
         log_kw = {'caption': f'Iteration: {_it}', 'commit': False, 'iteration': _it}
 
         print('Validate Images')
-        pic_row_list = self.inference(valDataLoader)[:5]
+        pic_row_list = self.inference(valDataLoader)
         self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
 
         print('Training Images')
-        pic_row_list = self.inference(dataLoader, dataLoaderType='train')[:5]
+        pic_row_list = self.inference(dataLoader, dataLoaderType='train')
         self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
@@ -116,11 +117,9 @@ class Trainer():
   
   def inference(self, dataLoader, dataLoaderType='validate'):
     self.generator.eval()
-    pic_row = []
+    pic_rows = []
     with torch.no_grad():
-      for _it in range(10):
-        if len(pic_row) > 10:
-          break
+      for _it in range(self.inference_size):
         if dataLoaderType == 'validate':
           line, color, noise = next(dataLoader)
         elif dataLoaderType == 'train':
@@ -140,8 +139,11 @@ class Trainer():
           gen_im = un_norm_im(gen_im)
           line_im = un_norm_im(line_im)#.type(torch.int)
           color_im = un_norm_im(color_im)#.type(torch.int)
-          pic_row.append([line_im, color_im, gen_im])
-    return pic_row
+          pic_rows.append([line_im, color_im, gen_im])
+          if len(pic_rows) >= self.inference_size:
+            return pic_rows[:self.inference_size]
+    # Shouldn't reach here
+    return pic_rows[:self.inference_size]
 
   def save_checkpoint(self, iteration=..., filepath=...):
     if iteration is ...:
