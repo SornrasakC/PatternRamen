@@ -78,7 +78,7 @@ class Trainer():
       if _it % 100 == 0:
         pic_rows = self.inference(valDataLoader)
         for pic_row in pic_rows[:10]:
-          self.logger.log_image_row(pic_row)
+          self.logger.log_image_row(pic_row, caption=f'Iteration: {_it + self.iteration}')
           show_image_row(pic_row)
 
       if _it % 100 == 0:

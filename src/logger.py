@@ -26,9 +26,9 @@ class Logger:
     def log_losses(self, g_loss, d_loss):
         wandb.log({"g_loss": g_loss, "d_loss": d_loss})
 
-    def log_image(self, np_image, log_msg='Validation image'):
-        image = wandb.Image(np_image)
-        wandb.log({log_msg: image})
+    def log_image(self, np_image, log_msg='Validation image', caption=None, **kw):
+        image = wandb.Image(np_image, caption=caption)
+        wandb.log({log_msg: image}, **kw)
 
     def log_image_row(self, np_image_row, **kw):
         np_image = np.concatenate(np_image_row, axis=1)
