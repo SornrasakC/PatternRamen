@@ -1,6 +1,6 @@
 from src.model import Discriminator, Generator
 from src.util import show_image, show_image_row, pack_checkpoint, gen_checkpoint_path, get_latest_checkpoint
-from src.logger import Logger
+from src.logger import Logger, TimeLogger
 
 import torch
 from torch import optim
@@ -12,7 +12,7 @@ from tqdm import tqdm
 import os
 
 class Trainer():
-  def __init__(self, checkpoint_path=None, wandb_run_id=None, checkpoint_interval=100):
+  def __init__(self, checkpoint_path=None, wandb_run_id=None, checkpoint_interval=100, disable_time_logger=False):
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
@@ -27,8 +27,9 @@ class Trainer():
     self.init_optimizers()
 
     self.iteration = 0
-    self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
     self.checkpoint_interval = checkpoint_interval
+    self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
+    self.time_logger = TimeLogger(disabled=disable_time_logger)
 
     if checkpoint_path != None:
       self.load_checkpoint(checkpoint_path)
@@ -45,7 +46,11 @@ class Trainer():
     total_it = self.iteration + iterations
     for _it in tqdm(range(self.iteration + 1, total_it + 1)):
       self.generator.train()
+
+      self.time_logger.start()
       line, color, transform_color, noise = next(dataLoader)
+      self.time_logger.check('Data loading')
+
       line = line.cuda().to(dtype=torch.float32)
       color = color.cuda().to(dtype=torch.float32)
       transform_color = transform_color.cuda().to(dtype=torch.float32)
@@ -54,22 +59,34 @@ class Trainer():
       self.d_optimizer_line.zero_grad()
       self.d_optimizer_color.zero_grad()
 
+      self.time_logger.start()
       generated_image = self.generator(line, transform_color, noise)
+      self.time_logger.check('Generator forward')
 
       d_loss_line = torch.mean((self.discriminator_line(line, color)-1)**2 + self.discriminator_line(line, generated_image.detach())**2)
       d_loss_color = torch.mean((self.discriminator_color(color, color)-1)**2 + self.discriminator_color(color, generated_image.detach())**2)
       
       d_loss = (d_loss_line + d_loss_color) / 2
+      self.time_logger.check('D Loss Calculation')
+
       d_loss.backward()
+      self.time_logger.check('D Loss Backward')
+
       self.d_optimizer_color.step()      
       self.d_optimizer_line.step()
+
+      self.time_logger.check('D Optim Steps')
       
       self.g_optimizer.zero_grad()
       p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
       pure_g_loss = torch.mean((self.discriminator_line(line, generated_image) - 1)**2) + torch.mean((self.discriminator_color(color, generated_image) - 1)**2)
       g_loss = pure_g_loss + 1 * p_loss #/ (16 * 16) # [BS, 512, 16, 16]
+      self.time_logger.check('G Loss Calculation')
+
       g_loss.backward()
+      self.time_logger.check('G Loss Backward')
       self.g_optimizer.step()
+      self.time_logger.check('G Optim Steps')
       
       if _it % self.checkpoint_interval == 0:
         print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
@@ -88,10 +105,10 @@ class Trainer():
         self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
-
-        pass
+        self.time_logger.check('Evaluation')
       
       self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
+      self.time_logger.check('Wandb Logging')
 
     self.logger.finish()
     self.iteration += iterations

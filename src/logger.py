@@ -1,6 +1,6 @@
 import wandb
 import numpy as np
-
+import time
 
 class Logger:
     def __init__(self, wandb_run_id=None, checkpoint_path=None, disable_wandb=False):
@@ -61,3 +61,24 @@ class Logger:
                     return func(*args, **kw)
                 return new_func
             setattr(self, method, gen_func(func))
+
+class TimeLogger:
+    def __init__(self, disabled=False):
+        self.start()
+        self.disabled = disabled
+        
+    
+    def start():
+        self.start_time = time.time()
+
+    def check(msg='', reset=True):
+        time_passed = time.time() - self.start_time
+
+        if self.disabled:
+            return ...
+            
+        print(f'[Time Logger] [{msg}] {time_passed:.2f} sec')
+
+        if reset:
+            self.start()
+        
