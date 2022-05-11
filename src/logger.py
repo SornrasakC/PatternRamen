@@ -24,7 +24,7 @@ class Logger:
         wandb.watch(trainer.generator)
 
     def log_losses(self, g_loss, d_loss, iteration, **kw):
-        wandb.log({"g_loss": g_loss, "d_loss": d_loss, "iteration": iteration}, **kw)
+        wandb.log({"g_loss": g_loss.detach(), "d_loss": d_loss.detach(), "iteration": iteration}, **kw)
 
     def log_image(self, np_image, iteration, log_msg='Validation image', caption=None, is_img_list=False, **kw):
         if is_img_list:
@@ -77,7 +77,7 @@ class TimeLogger:
         if self.disabled:
             return ...
             
-        print(f'[Time Logger] [{msg}] {time_passed:.2f} sec')
+        print(f'[Time Logger] {{ {msg} }} {time_passed:.2f} sec')
 
         if reset:
             self.start()
