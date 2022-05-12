@@ -40,8 +40,18 @@ class Trainer():
     self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
 
-  def train(self, dataLoader, valDataLoader, iterations):
+  def loader_it(self, data_loader):
+    it = iter(data_loader)
+    while True:
+      try:
+        yield next(it)
+      except StopIteration:
+        it = iter(data_loader)
+
+  def train(self, data_loader_train, data_loader_val, iterations):
     self.logger.watch(self)
+    it_train = self.loader_it(data_loader_train)
+    it_val = self.loader_it(data_loader_val)
     
     print(f'Starting on iteration: {self.iteration}')
     total_it = self.iteration + iterations
@@ -49,7 +59,7 @@ class Trainer():
       self.generator.train()
 
       self.time_logger.start()
-      line, color, transform_color, noise = next(dataLoader)
+      line, color, transform_color, noise = next(it_train)
       self.time_logger.check('Data loading')
 
       line = line.cuda().to(dtype=torch.float32)
@@ -98,13 +108,13 @@ class Trainer():
         log_kw = {'caption': f'Iteration: {_it}', 'commit': False, 'iteration': _it}
 
         print('Validate Images')
-        pic_row_list = self.inference(valDataLoader)
+        pic_row_list = self.inference(it_val)
         self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
 
         print('Training Images')
-        pic_row_list = self.inference(dataLoader, dataLoaderType='train')
+        pic_row_list = self.inference(it_train, data_loader_type='train')
         self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
         for pic_row in pic_row_list:
           show_image_row(pic_row)
@@ -115,15 +125,15 @@ class Trainer():
     self.iteration += iterations
     self.save_checkpoint()
   
-  def inference(self, dataLoader, dataLoaderType='validate'):
+  def inference(self, data_loader_it, data_loader_type='validate'):
     self.generator.eval()
     pic_rows = []
     with torch.no_grad():
       for _it in range(self.inference_size):
-        if dataLoaderType == 'validate':
-          line, color, noise = next(dataLoader)
-        elif dataLoaderType == 'train':
-          line, color, transform_color, noise = next(dataLoader)
+        if data_loader_type == 'validate':
+          line, color, noise = next(data_loader_it)
+        elif data_loader_type == 'train':
+          line, color, transform_color, noise = next(data_loader_it)
         else:
           raise NotImplemented
 
