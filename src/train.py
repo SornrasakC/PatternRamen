@@ -40,7 +40,7 @@ class Trainer():
     self.checkpoint_base = util.get_checkpoint_base(checkpoint_folder_parent)
     self.data_path_train = data_path_train
     self.data_path_val = data_path_val
-    self.batch_size = self.batch_size
+    self.batch_size = batch_size
 
     self.load_checkpoint(checkpoint_path)
         
