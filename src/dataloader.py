@@ -42,7 +42,7 @@ def draw_random_line(img, line_range):
 
 
 class XDoGData:
-    def __init__(self, param, folder_path, is_validate=False):
+    def __init__(self, param, folder_path, is_validate=False, disable_random_line=False):
         self.folder_path = folder_path
         self.data = os.listdir(folder_path)
         self.gamma = param["gamma"]
@@ -99,11 +99,12 @@ class XDoGData:
             return line, color, color, noise
         tran_color = self.train_transform(torch.Tensor(np.transpose(color, (2, 0, 1))))
 
-        ### draw random line on picture
-        rotate_angle = np.random.uniform(-60, 60, 1)[0]
-        tran_color = transforms.functional.rotate(tran_color, rotate_angle, fill=255)
-        tran_color = draw_random_line(tran_color, (50, 75))
-        tran_color = transforms.functional.rotate(tran_color, -rotate_angle, fill=255)
+        if not disable_random_line:
+            ### draw random line on picture
+            rotate_angle = np.random.uniform(-60, 60, 1)[0]
+            tran_color = transforms.functional.rotate(tran_color, rotate_angle, fill=255)
+            tran_color = draw_random_line(tran_color, (50, 75))
+            tran_color = transforms.functional.rotate(tran_color, -rotate_angle, fill=255)
 
         # color, tran_color = self.transform(color), self.transform(tran_color)
         color, tran_color = self.transform(color), self.transform(
@@ -115,3 +116,14 @@ class XDoGData:
 
     def __len__(self):
         return len(self.data)
+
+def gen_data_loader(data_path, is_validate=False, **kw):
+    data = XDoGData(PARAM, data_path, is_validate)
+    defaults = {
+        'shuffle': True,
+        'batch_size': 16,
+        'num_workers': 4,
+    }
+    opt = {**defaults, **kw}
+    data_loader = DataLoader(data, **opt)
+    return data_loader

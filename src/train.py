@@ -1,6 +1,7 @@
 from src.model import Discriminator, Generator
 import src.util as util
 from src.logger import Logger, TimeLogger
+from src.dataloader import gen_data_loader
 
 import torch
 from torch import optim
@@ -12,7 +13,12 @@ from tqdm import tqdm
 import os
 
 class Trainer():
-  def __init__(self, checkpoint_path=None, wandb_run_id=None, checkpoint_interval=100, disable_time_logger=False, checkpoint_folder_parent=None):
+  def __init__(self,
+      wandb_run_id=None, disable_time_logger=False,
+      checkpoint_path=None, checkpoint_folder_parent=None, checkpoint_interval=100,
+      data_path_train=None, data_path_val=None, batch_size=16,
+    ):
+
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
@@ -30,8 +36,11 @@ class Trainer():
     self.checkpoint_interval = checkpoint_interval
     self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
     self.time_logger = TimeLogger(disabled=disable_time_logger)
-    self.inference_size = 6
+    self.inference_size = 2
     self.checkpoint_base = util.get_checkpoint_base(checkpoint_folder_parent)
+    self.data_path_train = data_path_train
+    self.data_path_val = data_path_val
+    self.batch_size = self.batch_size
 
     self.load_checkpoint(checkpoint_path)
         
@@ -41,11 +50,11 @@ class Trainer():
     self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
 
-  def train(self, data_loader_train, data_loader_val, iterations):
+  def train(self, iterations):
     self.logger.watch(self)
 
+    data_loader_train = gen_data_loader(self.data_path_train, shuffle=True, batch_size=self.batch_size)
     it_train = util.loader_cycle_it(data_loader_train)
-    it_val = util.loader_cycle_it(data_loader_val)
     
     print(f'Starting on iteration: {self.iteration}')
     total_it = self.iteration + iterations
@@ -109,31 +118,48 @@ class Trainer():
     self.iteration += iterations
     self.save_checkpoint()
   
-  def evaluate(self, it_train, it_val, iteration, total_it):
+  def evaluate(self, iteration, total_it):
     self.generator.eval()
 
     log_kw = {'caption': f'Iteration: {iteration}', 'commit': False, 'iteration': iteration}
 
-    print('Validate Images')
-    pic_row_list = self.inference(it_val)
-    self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', **log_kw)
-    for pic_row in pic_row_list:
-      util.show_image_row(pic_row)
+    opt = {'batch_size': self.inference_size}
+    it_train_s = iter(gen_data_loader(self.data_path_train, shuffle=True, **opt))
+    it_train = iter(gen_data_loader(self.data_path_train, shuffle=False, **opt))
 
-    print('Training Images')
-    pic_row_list = self.inference(it_train)
-    self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
-    for pic_row in pic_row_list:
-      util.show_image_row(pic_row)
+    opt = {'batch_size': self.inference_size, 'is_validate': True}
+    it_val_s = iter(gen_data_loader(self.data_path_val, shuffle=True, **opt))
+    it_val = iter(gen_data_loader(self.data_path_val, shuffle=False, **opt))
+
+    def _evaluate(it_data, log_msg, **inf_kw):
+      print(f'''
+      ------------
+        {log_msg}
+      ------------
+      ''')
+      pic_row_list = self.inference(it_data, **inf_kw)
+      self.logger.log_image_row_list(pic_row_list, log_msg=log_msg, **log_kw)
+      for pic_row in pic_row_list:
+        util.show_image_row(pic_row)
+    
+    _evaluate(it_train, log_msg='train_images_fixed', lock_line=True)
+    _evaluate(it_train_s, log_msg='train_images_shuffle', lock_line=True)
+    
+    _evaluate(it_val, log_msg='val_images_fixed', lock_line=True)
+    _evaluate(it_val_s, log_msg='val_images_shuffle', lock_line=True)
     
     self.generator.train()
   
-  def inference(self, it_data_loader):
+  def inference(self, it_data_loader, lock_line=False, lock_color=False):
     self.generator.eval()
     pic_rows = []
     with torch.no_grad():
       for _it in range(self.inference_size):
         line, color, _transform_color, noise = next(it_data_loader)
+        if lock_line:
+          line = util.lock_batch(line)
+        if lock_color:
+          color = util.lock_batch(color)
 
         line = line.cuda().to(dtype=torch.float32)
         color = color.cuda().to(dtype=torch.float32)
@@ -166,6 +192,7 @@ class Trainer():
   def load_checkpoint(self, checkpoint_path):
     if checkpoint_path != None:
       self._load_checkpoint(checkpoint_path)
+
     if checkpoint_path == None:
       try:
         util.get_latest_checkpoint(self.checkpoint_base)
@@ -176,7 +203,8 @@ class Trainer():
   def _load_checkpoint(self, checkpoint_path):
     if checkpoint_path == 'latest':
       checkpoint_path = util.get_latest_checkpoint(self.checkpoint_base)
-    assert os.path.isfile(checkpoint_path)
+    else:
+      assert os.path.isfile(checkpoint_path)
 
     print(f'Loading Checkpoint: {checkpoint_path}')
 

@@ -1,3 +1,4 @@
+import torch
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
@@ -76,3 +77,9 @@ def denorm_image(image):
     un_norm_im = lambda im: un_norm(format_im(im))
 
     return un_norm_im(image)
+
+def lock_batch(image_batch, idx=0):
+    image_batch = torch.clone(image_batch)
+    for i in range(len(image_batch)):
+        image_batch[i] = image_batch[idx]
+    return image_batch
