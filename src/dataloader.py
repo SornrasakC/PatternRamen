@@ -54,6 +54,8 @@ class XDoGData:
         self.k = param["k"]
         self.sigma = param["sigma"]
         self.is_validate = is_validate
+        self.disable_random_line = disable_random_line
+
         train_transform = nn.Sequential(
             transforms.RandomRotation(60, fill=255),
             transforms.RandomPerspective(distortion_scale=0.6, p=1.0, fill=255),
@@ -102,7 +104,7 @@ class XDoGData:
             return line, color, color, noise
         tran_color = self.train_transform(torch.Tensor(np.transpose(color, (2, 0, 1))))
 
-        if not disable_random_line:
+        if not self.disable_random_line:
             ### draw random line on picture
             rotate_angle = np.random.uniform(-60, 60, 1)[0]
             tran_color = transforms.functional.rotate(tran_color, rotate_angle, fill=255)
@@ -120,8 +122,9 @@ class XDoGData:
     def __len__(self):
         return len(self.data)
 
-def gen_data_loader(data_path, is_validate=False, **kw):
-    data = XDoGData(PARAM, data_path, is_validate)
+
+def gen_data_loader(data_path, is_validate=False, disable_random_line=False, **kw):
+    data = XDoGData(PARAM, data_path, is_validate, disable_random_line=disable_random_line)
     defaults = {
         'shuffle': True,
         'batch_size': 16,
