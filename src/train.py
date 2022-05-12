@@ -1,5 +1,5 @@
 from src.model import Discriminator, Generator
-from src.util import show_image, show_image_row, pack_checkpoint, gen_checkpoint_path, get_latest_checkpoint
+import src.util as util
 from src.logger import Logger, TimeLogger
 
 import torch
@@ -12,7 +12,7 @@ from tqdm import tqdm
 import os
 
 class Trainer():
-  def __init__(self, checkpoint_path=None, wandb_run_id=None, checkpoint_interval=100, disable_time_logger=False):
+  def __init__(self, checkpoint_path=None, wandb_run_id=None, checkpoint_interval=100, disable_time_logger=False, checkpoint_folder_parent=None):
     self.discriminator_line = Discriminator()
     self.discriminator_color = Discriminator()
     self.generator = Generator()
@@ -31,27 +31,21 @@ class Trainer():
     self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
     self.time_logger = TimeLogger(disabled=disable_time_logger)
     self.inference_size = 6
+    self.checkpoint_base = util.get_checkpoint_base(checkpoint_folder_parent)
 
-    if checkpoint_path != None:
-      self.load_checkpoint(checkpoint_path)
+    self.load_checkpoint(checkpoint_path)
+        
 
   def init_optimizers(self):
     self.g_optimizer = optim.Adam(self.generator.parameters(), lr=1e-4, betas=(0.5, 0.999)) # paper lr 1e-4
     self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
 
-  def loader_it(self, data_loader):
-    it = iter(data_loader)
-    while True:
-      try:
-        yield next(it)
-      except StopIteration:
-        it = iter(data_loader)
-
   def train(self, data_loader_train, data_loader_val, iterations):
     self.logger.watch(self)
-    it_train = self.loader_it(data_loader_train)
-    it_val = self.loader_it(data_loader_val)
+
+    it_train = util.loader_cycle_it(data_loader_train)
+    it_val = util.loader_cycle_it(data_loader_val)
     
     print(f'Starting on iteration: {self.iteration}')
     total_it = self.iteration + iterations
@@ -85,7 +79,6 @@ class Trainer():
 
       self.d_optimizer_color.step()      
       self.d_optimizer_line.step()
-
       self.time_logger.check('D Optim Steps')
       
       self.g_optimizer.zero_grad()
@@ -96,59 +89,62 @@ class Trainer():
 
       g_loss.backward()
       self.time_logger.check('G Loss Backward')
+
       self.g_optimizer.step()
       self.time_logger.check('G Optim Steps')
       
       self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
       self.time_logger.check('Wandb Logging')
+
       if _it % self.checkpoint_interval == 0:
         print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
+
         self.save_checkpoint(iteration=_it)
+        self.time_logger.check('Save Checkpoint')
 
-        log_kw = {'caption': f'Iteration: {_it}', 'commit': False, 'iteration': _it}
-
-        print('Validate Images')
-        pic_row_list = self.inference(it_val)
-        self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', **log_kw)
-        for pic_row in pic_row_list:
-          show_image_row(pic_row)
-
-        print('Training Images')
-        pic_row_list = self.inference(it_train, data_loader_type='train')
-        self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
-        for pic_row in pic_row_list:
-          show_image_row(pic_row)
+        self.evaluate(it_train, it_val, iteration=_it, total_it=total_it)
         self.time_logger.check('Evaluation')
       
-
     self.logger.finish()
     self.iteration += iterations
     self.save_checkpoint()
   
-  def inference(self, data_loader_it, data_loader_type='validate'):
+  def evaluate(self, it_train, it_val, iteration, total_it):
+    self.generator.eval()
+
+    log_kw = {'caption': f'Iteration: {iteration}', 'commit': False, 'iteration': iteration}
+
+    print('Validate Images')
+    pic_row_list = self.inference(it_val)
+    self.logger.log_image_row_list(pic_row_list, log_msg='Validation Images', **log_kw)
+    for pic_row in pic_row_list:
+      util.show_image_row(pic_row)
+
+    print('Training Images')
+    pic_row_list = self.inference(it_train)
+    self.logger.log_image_row_list(pic_row_list, log_msg='Training Images', **log_kw)
+    for pic_row in pic_row_list:
+      util.show_image_row(pic_row)
+    
+    self.generator.train()
+  
+  def inference(self, it_data_loader):
     self.generator.eval()
     pic_rows = []
     with torch.no_grad():
       for _it in range(self.inference_size):
-        if data_loader_type == 'validate':
-          line, color, noise = next(data_loader_it)
-        elif data_loader_type == 'train':
-          line, color, transform_color, noise = next(data_loader_it)
-        else:
-          raise NotImplemented
+        line, color, _transform_color, noise = next(it_data_loader)
 
         line = line.cuda().to(dtype=torch.float32)
         color = color.cuda().to(dtype=torch.float32)
         noise = noise.cuda().to(dtype=torch.float32)
         generated_images = self.generator(line, color, noise)
-        for line_im, color_im, gen_im in zip(line, color, generated_images):
-          format_im = lambda im: im.squeeze().permute(1,2,0).detach().cpu()
-          un_norm = lambda data: (0.5 * data + 0.5)#[..., ::-1]
-          un_norm_im = lambda im: un_norm(format_im(im))
 
-          gen_im = un_norm_im(gen_im)
-          line_im = un_norm_im(line_im)#.type(torch.int)
-          color_im = un_norm_im(color_im)#.type(torch.int)
+        for line_im, color_im, gen_im in zip(line, color, generated_images):
+          gen_im = util.denorm_image(gen_im)
+          line_im = util.denorm_image(line_im)
+          color_im = util.denorm_image(color_im)
+
           pic_rows.append([line_im, color_im, gen_im])
           if len(pic_rows) >= self.inference_size:
             return pic_rows[:self.inference_size]
@@ -160,21 +156,43 @@ class Trainer():
       iteration = self.iteration
 
     if filepath is ...:
-      filepath = gen_checkpoint_path(iteration)
+      filepath = util.gen_checkpoint_path(self.checkpoint_base, iteration)
     
-    pack_dict = pack_checkpoint(self.discriminator_line, self.discriminator_color, self.generator, self.g_optimizer, self.d_optimizer_line, self.d_optimizer_color, iteration)
+    pack_dict = util.pack_checkpoint(self.discriminator_line, self.discriminator_color, self.generator, self.g_optimizer, self.d_optimizer_line, self.d_optimizer_color, iteration, self.logger.wandb_run_id)
 
     print(f'Saving Checkpoint: {filepath}')
     torch.save(pack_dict, filepath)
 
   def load_checkpoint(self, checkpoint_path):
+    if checkpoint_path != None:
+      self._load_checkpoint(checkpoint_path)
+    if checkpoint_path == None:
+      try:
+        util.get_latest_checkpoint(self.checkpoint_base)
+        raise Exception('Checkpoints not empty')
+      except AssertionError:
+        pass
+
+  def _load_checkpoint(self, checkpoint_path):
     if checkpoint_path == 'latest':
-      checkpoint_path = get_latest_checkpoint()
+      checkpoint_path = util.get_latest_checkpoint(self.checkpoint_base)
     assert os.path.isfile(checkpoint_path)
 
     print(f'Loading Checkpoint: {checkpoint_path}')
 
     pack_dict = torch.load(checkpoint_path, map_location='cpu')
+
+    if 'wandb_run_id' in pack_dict:
+      wandb_run_id = pack_dict['wandb_run_id']
+      print(f'Loading checkpoint of wandb_run_id: {wandb_run_id}')
+      assert wandb_run_id == self.logger.wandb_run_id
+    else:
+      input(f'''
+      ======================================================================
+      ======================================================================
+        [WARNING] 'wandb_run_id' does not exists in the current checkpoint.
+        Enter to continue:
+      ''')
 
     self.discriminator_line.load_state_dict(pack_dict['discriminator_line'])
     self.discriminator_color.load_state_dict(pack_dict['discriminator_color'])
@@ -187,4 +205,3 @@ class Trainer():
     self.d_optimizer_color.load_state_dict(pack_dict['d_optimizer_color'])
 
     self.iteration = pack_dict['iteration']
-

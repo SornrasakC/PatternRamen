@@ -70,6 +70,7 @@ class TimeLogger:
     
     def start(self):
         self.start_time = time.time()
+        return self.start_time
 
     def check(self, msg='', reset=True):
         time_passed = time.time() - self.start_time
@@ -81,4 +82,6 @@ class TimeLogger:
 
         if reset:
             self.start()
+        
+        return time_passed
         
