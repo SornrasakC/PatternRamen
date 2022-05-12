@@ -29,6 +29,7 @@ class Trainer():
     self.discriminator_color.cuda()
     self.generator.cuda()
     self.perceptual_criterion = nn.L1Loss()
+    self.p_loss_weight = 1
 
     self.init_optimizers()
 
@@ -78,8 +79,13 @@ class Trainer():
       generated_image = self.generator(line, transform_color, noise)
       self.time_logger.check('Generator forward')
 
-      d_loss_line = torch.mean((self.discriminator_line(line, color)-1)**2 + self.discriminator_line(line, generated_image.detach())**2)
-      d_loss_color = torch.mean((self.discriminator_color(color, color)-1)**2 + self.discriminator_color(color, generated_image.detach())**2)
+      d_loss_line_real = torch.mean( (self.discriminator_line(line, color) - 1)**2 )
+      d_loss_line_fake = torch.mean( self.discriminator_line(line, generated_image.detach())**2 )
+      d_loss_line = d_loss_line_real + d_loss_line_fake
+
+      d_loss_color_real = torch.mean( (self.discriminator_color(color, color) - 1)**2 )
+      d_loss_color_fake = torch.mean( self.discriminator_color(color, generated_image.detach())**2 )
+      d_loss_color = d_loss_color_real + d_loss_color_fake
       
       d_loss = (d_loss_line + d_loss_color) / 2
       self.time_logger.check('D Loss Calculation')
@@ -93,8 +99,10 @@ class Trainer():
       
       self.g_optimizer.zero_grad()
       p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
-      pure_g_loss = torch.mean((self.discriminator_line(line, generated_image) - 1)**2) + torch.mean((self.discriminator_color(color, generated_image) - 1)**2)
-      g_loss = pure_g_loss + 1 * p_loss #/ (16 * 16) # [BS, 512, 16, 16]
+
+      g_loss_line = torch.mean( (self.discriminator_line(line, generated_image) - 1)**2 )
+      g_loss_color = torch.mean( (self.discriminator_color(color, generated_image) - 1)**2 )
+      g_loss = g_loss_line + g_loss_color + self.p_loss_weight * p_loss
       self.time_logger.check('G Loss Calculation')
 
       g_loss.backward()
@@ -103,7 +111,11 @@ class Trainer():
       self.g_optimizer.step()
       self.time_logger.check('G Optim Steps')
       
-      self.logger.log_losses(g_loss=g_loss, d_loss=d_loss, iteration=_it)
+      pack_loss = self.logger.pack_losses__(d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake, 
+        d_loss_color, d_loss_color_real, d_loss_color_fake, 
+        g_loss, g_loss_line, g_loss_color, p_loss)
+
+      self.logger.log_losses(pack_loss=pack_loss, iteration=_it)
       self.time_logger.check('Wandb Logging')
 
       if _it % self.checkpoint_interval == 0:

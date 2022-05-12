@@ -23,8 +23,27 @@ class Logger:
         wandb.watch(trainer.discriminator_color)
         wandb.watch(trainer.generator)
 
-    def log_losses(self, g_loss, d_loss, iteration, **kw):
-        wandb.log({"g_loss": g_loss.detach(), "d_loss": d_loss.detach(), "iteration": iteration}, **kw)
+    def pack_losses__(self, 
+        d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake, 
+        d_loss_color, d_loss_color_real, d_loss_color_fake, 
+        g_loss, g_loss_line, g_loss_color, p_loss
+    ):
+        return {
+            'd_loss': d_loss.detach(),
+            'd_loss_line': d_loss_line.detach(),
+            'd_loss_line_real': d_loss_line_real.detach(),
+            'd_loss_line_fake': d_loss_line_fake.detach(),
+            'd_loss_color': d_loss_color.detach(),
+            'd_loss_color_real': d_loss_color_real.detach(),
+            'd_loss_color_fake': d_loss_color_fake.detach(),
+            'g_loss': g_loss.detach(),
+            'g_loss_line': g_loss_line.detach(),
+            'g_loss_color': g_loss_color.detach(),
+            'p_loss': p_loss.detach(),
+        }
+
+    def log_losses(self, pack_loss, iteration, **kw):
+        wandb.log({**pack_loss, "iteration": iteration}, **kw)
 
     def log_image(self, np_image, iteration, log_msg='Validation image', caption=None, is_img_list=False, **kw):
         if is_img_list:
