@@ -95,7 +95,8 @@ class XDoGData:
 
         line = self.transform(line.astype(np.uint8))
         if self.is_validate:
-            return line, self.transform(color), noise
+            color = self.transform(color)
+            return line, color, color, noise
         tran_color = self.train_transform(torch.Tensor(np.transpose(color, (2, 0, 1))))
 
         ### draw random line on picture
