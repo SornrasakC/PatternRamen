@@ -112,7 +112,7 @@ class Trainer():
         self.save_checkpoint(iteration=_it)
         self.time_logger.check('Save Checkpoint')
 
-        self.evaluate(it_train, it_val, iteration=_it, total_it=total_it)
+        self.evaluate(iteration=_it, total_it=total_it)
         self.time_logger.check('Evaluation')
       
     self.logger.finish()
@@ -124,7 +124,7 @@ class Trainer():
 
     log_kw = {'caption': f'Iteration: {iteration}', 'commit': False, 'iteration': iteration}
 
-    opt = {'batch_size': self.inference_size, 'disable_random_line': self.disable_random_line}
+    opt = {'batch_size': self.inference_size, 'disable_random_line': self.disable_random_line, 'is_validate': False}
     it_train_s = iter(gen_data_loader(self.data_path_train, shuffle=True, **opt))
     it_train = iter(gen_data_loader(self.data_path_train, shuffle=False, **opt))
 
