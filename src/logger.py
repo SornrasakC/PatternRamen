@@ -11,6 +11,7 @@ class Logger:
 
     def init_wandb(self):
         options = {
+            'entity': 'pattern-ramen',
             'project': 'colorization',
             'id': self.wandb_run_id,
             'resume': 'must' if self.checkpoint_path != None else None
