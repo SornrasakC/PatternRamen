@@ -19,8 +19,8 @@ class Trainer():
       data_path_train=None, data_path_val=None, batch_size=16,
     ):
 
-    self.discriminator_line = Discriminator()
-    self.discriminator_color = Discriminator()
+    self.discriminator_line = Discriminator(input_num=2)
+    self.discriminator_color = Discriminator(input_num=1)
     self.generator = Generator()
     self.vgg16 = torchvision.models.vgg16(pretrained=True).features[:25]
     self.vgg16.cuda()
@@ -83,8 +83,8 @@ class Trainer():
       d_loss_line_fake = torch.mean( self.discriminator_line(line, generated_image.detach())**2 )
       d_loss_line = d_loss_line_real + d_loss_line_fake
 
-      d_loss_color_real = torch.mean( (self.discriminator_color(color, color) - 1)**2 )
-      d_loss_color_fake = torch.mean( self.discriminator_color(color, generated_image.detach())**2 )
+      d_loss_color_real = torch.mean( (self.discriminator_color(color) - 1)**2 )
+      d_loss_color_fake = torch.mean( self.discriminator_color(generated_image.detach())**2 )
       d_loss_color = d_loss_color_real + d_loss_color_fake
       
       d_loss = (d_loss_line + d_loss_color) / 2
