@@ -32,6 +32,7 @@ class Trainer():
     self.perceptual_criterion = nn.L1Loss()
     self.p_loss_weight = 1
 
+    self.g_lr, self.d_line_lr, self.d_color_lr = g_lr, d_line_lr, d_color_lr
     self.init_optimizers(g_lr, d_line_lr, d_color_lr)
 
     self.iteration = 0
@@ -240,7 +241,7 @@ class Trainer():
     self.discriminator_color.load_state_dict(pack_dict['discriminator_color'])
     self.generator.load_state_dict(pack_dict['generator'])
 
-    self.init_optimizers()
+    self.init_optimizers(self.g_lr, self.d_line_lr, self.d_color_lr)
 
     self.g_optimizer.load_state_dict(pack_dict['g_optimizer'])
     self.d_optimizer_line.load_state_dict(pack_dict['d_optimizer_line'])
