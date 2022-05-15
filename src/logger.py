@@ -2,6 +2,7 @@ import wandb
 import numpy as np
 import time
 
+
 class Logger:
     def __init__(self, wandb_run_id=None, checkpoint_path=None, disable_wandb=False):
         self.disable_wandb = disable_wandb
@@ -27,11 +28,11 @@ class Logger:
         wandb.watch(trainer.discriminator_color)
         wandb.watch(trainer.generator)
 
-    def pack_losses__(self, 
-        d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake, 
-        d_loss_color, d_loss_color_real, d_loss_color_fake, 
-        g_loss, g_loss_line, g_loss_color, p_loss
-    ):
+    def pack_losses__(self,
+                      d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
+                      d_loss_color, d_loss_color_real, d_loss_color_fake,
+                      g_loss, g_loss_line, g_loss_color, p_loss
+                      ):
         return {
             'd_loss': d_loss.detach(),
             'd_loss_line': d_loss_line.detach(),
@@ -47,8 +48,8 @@ class Logger:
         }
 
     def pack_learning_rates__(self,
-        g_lr, d_line_lr, d_color_lr
-    ):
+                              g_lr, d_line_lr, d_color_lr
+                              ):
         return {
             "g_lr": g_lr,
             "d_line_lr": d_line_lr,
@@ -94,26 +95,28 @@ class Logger:
                 return new_func
             setattr(self, method, gen_func(func))
 
+
 class TimeLogger:
     def __init__(self, disabled=False):
         self.start()
         self.disabled = disabled
-        
-    
+
     def start(self):
         self.start_time = time.time()
         return self.start_time
 
     def check(self, msg='', reset=True):
-        time_passed = time.time() - self.start_time
-
         if self.disabled:
             return ...
-            
-        print(f'[Time Logger] {{ {msg} }} {time_passed:.2f} sec')
+
+        time_passed = time.time() - self.start_time
+
+        self.print(msg, time_passed)
 
         if reset:
             self.start()
-        
+
         return time_passed
-        
+
+    def print(self, msg, time_passed):
+        print(f'[Time Logger] {{ {msg} }} {time_passed:.2f} sec')
