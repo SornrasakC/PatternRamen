@@ -144,7 +144,7 @@ def gen_data_loader(data_path, is_validate=False, disable_random_line=False, **k
 
 class InstanceNoise:
     def __init__(self):
-        self.noise_start_var = 0.1
+        self.noise_start_var = 0.1 ** 2
         self.noise_mean = 0
     
     def cal_var(self, current_step, total_step):
@@ -154,6 +154,9 @@ class InstanceNoise:
     def add_noise(self, color, current_step, total_step):
         var = self.cal_var(current_step, total_step)
         color_for_dis = random_noise(color, mode='gaussian', mean=self.noise_mean, var=var)
-        color_for_dis = (255 * color_for_dis).astype(np.uint8)
-        color_for_dis = Image.fromarray(color_for_dis)
+        color_for_dis = torch.from_numpy(color_for_dis)
         return color_for_dis
+
+        # color_for_dis = (255 * color_for_dis).astype(np.uint8)
+        # color_for_dis = Image.fromarray(color_for_dis)
+        # return color_for_dis
