@@ -153,8 +153,8 @@ class InstanceNoise:
         return var
 
     def add_noise(self, color, current_step, total_step):
-        if random.choice([True, False]):
-            return color
+        # if random.choice([True, False]):
+        #     return color
 
         var = self.cal_var(current_step, total_step)
         color_for_dis = random_noise(color.cpu() / 255, mode='gaussian', mean=self.noise_mean, var=var)
