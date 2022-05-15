@@ -18,6 +18,9 @@ class Logger:
         }
         wandb.init(**options)
 
+        wandb.define_metric('iteration')
+        wandb.define_metric("*", step_metric="iteration")
+
     def watch(self, trainer):
         self.init_wandb()
         wandb.watch(trainer.discriminator_line)
