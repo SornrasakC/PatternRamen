@@ -75,7 +75,7 @@ class Trainer():
     total_it = self.iteration + iterations
     for _it in tqdm(range(self.iteration + 1, total_it + 1)):
       self.time_logger.start()
-      
+
       line, color, transform_color, noise = next(it_train)
       self.time_logger.check('Data loading')
       
@@ -155,8 +155,7 @@ class Trainer():
     self.time_logger.check('G Optim Steps')
 
     rets = [g_loss, g_loss_line, g_loss_color, p_loss]
-    return self.logger.pack_d_loss__(*map(lambda x: x.item(), rets))
-    return list(map(lambda x: x.item(), rets))
+    return util.pack_g_loss(*map(lambda x: x.item(), rets))
   
   def evaluate(self, iteration, total_it):
     self.generator.eval()
