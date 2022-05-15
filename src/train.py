@@ -89,11 +89,11 @@ class Trainer():
         color_for_dis = Image.fromarray(color_for_dis)
       else:
         color_for_dis = color
-      d_loss_line_real = torch.mean( (self.discriminator_line(line, color) - 1)**2 )
+      d_loss_line_real = torch.mean( (self.discriminator_line(line, color_for_dis) - 1)**2 )
       d_loss_line_fake = torch.mean( self.discriminator_line(line, generated_image.detach())**2 )
       d_loss_line = d_loss_line_real + d_loss_line_fake
 
-      d_loss_color_real = torch.mean( (self.discriminator_color(color) - 1)**2 )
+      d_loss_color_real = torch.mean( (self.discriminator_color(color_for_dis) - 1)**2 )
       d_loss_color_fake = torch.mean( self.discriminator_color(generated_image.detach())**2 )
       d_loss_color = d_loss_color_real + d_loss_color_fake
       
