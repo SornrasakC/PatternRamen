@@ -49,6 +49,9 @@ class Trainer():
     self.batch_size = batch_size
     self.disable_random_line = disable_random_line
 
+    self.noise_start_var = 0.1
+    self.noise_mean = 0
+
     self.load_checkpoint(checkpoint_path)
         
 
@@ -57,7 +60,7 @@ class Trainer():
     self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=d_line_lr, betas=(0.5, 0.999)) # paper lr 4e-4
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=d_color_lr, betas=(0.5, 0.999)) # paper lr 4e-4
 
-  def train(self, iterations,add_noise=True):
+  def train(self, iterations,add_noise=False):
     self.logger.watch(self)
 
     data_loader_train = gen_data_loader(self.data_path_train, shuffle=True, batch_size=self.batch_size, disable_random_line=self.disable_random_line)
@@ -84,7 +87,8 @@ class Trainer():
       generated_image = self.generator(line, transform_color, noise)
       self.time_logger.check('Generator forward')
       if add_noise:
-        color_for_dis = random_noise(color, mode='gaussian', var=0.05**2)
+        var = self.cal_var(_it,total_it)
+        color_for_dis = random_noise(color, mode='gaussian',mean=self.noise_mean, var=var)
         color_for_dis = (255*color_for_dis).astype(np.uint8)
         color_for_dis = Image.fromarray(color_for_dis)
       else:
@@ -173,6 +177,10 @@ class Trainer():
     
     self.generator.train()
   
+  def cal_var(self,current_iter,total_iter):
+    var = self.noise_start_var * ((total_iter-current_iter)/total_iter)
+    return var
+
   def inference(self, it_data_loader, lock_line=False, lock_color=False):
     self.generator.eval()
     pic_rows = []
