@@ -30,7 +30,8 @@ def xdog(img, sigma=0.5, k=1.6, gamma=1, epsilon=1, phi=1):
     # aux = dog(imgLine, sigma=sigma, k=k, gamma=gamma) / 255
     aux = dog(cv2.cvtColor(imgColor, cv2.COLOR_BGR2GRAY),sigma=sigma,k=k,gamma=gamma)/255
     aux = np.where(aux < epsilon, 1 * 255, 255 * (1 + np.tanh(phi * (aux))))
-    aux = cv2.merge([aux,aux,aux])
+    aux = cv2.cvtColor(aux.astype('float32'),cv2.COLOR_GRAY2RGB)
+    # aux = cv2.merge([aux,aux,aux])
     return aux, imgColor
 
 
@@ -46,8 +47,10 @@ def draw_random_line(img, line_range):
     return img
 
 
-class XDoGData:
+class XDoGData(torch.utils.data.Dataset):
     def __init__(self, param, folder_path, is_validate=False, disable_random_line=False):
+        super(XDoGData, self).__init__()
+        
         self.folder_path = folder_path
         self.data = os.listdir(folder_path)
         self.gamma = param["gamma"]
