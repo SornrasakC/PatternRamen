@@ -43,8 +43,17 @@ class Logger:
             'p_loss': p_loss.detach(),
         }
 
-    def log_losses(self, pack_loss, iteration, **kw):
-        wandb.log({**pack_loss, "iteration": iteration}, **kw)
+    def pack_learning_rates__(self,
+        g_lr, d_line_lr, d_color_lr
+    ):
+        return {
+            "g_lr": g_lr,
+            "d_line_lr": d_line_lr,
+            "d_color_lr": d_color_lr,
+        }
+
+    def log_losses(self, pack_loss, pack_lr, iteration, **kw):
+        wandb.log({**pack_loss, **pack_lr, "iteration": iteration}, **kw)
 
     def log_image(self, np_image, iteration, log_msg='Validation image', caption=None, is_img_list=False, **kw):
         if is_img_list:

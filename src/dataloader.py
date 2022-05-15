@@ -13,6 +13,9 @@ from torch import nn
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
+from PIL import Image
+from skimage.util import random_noise
+
 from src.fixed_noise import fixed_noise
 
 PARAM = {"gamma": 0.95, "phi": 1e9, "eps": -1, "k": 4.5, "sigma": 0.3}
@@ -138,3 +141,19 @@ def gen_data_loader(data_path, is_validate=False, disable_random_line=False, **k
     opt = {**defaults, **kw}
     data_loader = DataLoader(data, **opt)
     return data_loader
+
+class InstanceNoise:
+    def __init__(self):
+        self.noise_start_var = 0.1
+        self.noise_mean = 0
+    
+    def cal_var(self, current_step, total_step):
+        var = self.noise_start_var * ((total_step - current_step) / total_step)
+        return var
+
+    def add_noise(self, color, current_step, total_step):
+        var = self.cal_var(current_step, total_step)
+        color_for_dis = random_noise(color, mode='gaussian', mean=self.noise_mean, var=var)
+        color_for_dis = (255 * color_for_dis).astype(np.uint8)
+        color_for_dis = Image.fromarray(color_for_dis)
+        return color_for_dis

@@ -22,6 +22,11 @@ class Discriminator(nn.Module):
         x = torch.sigmoid(x)
         return x
 
+    def criterion(self, *x, label: int):
+        pred = self(*x)
+        return torch.mean(  (pred - label)**2 )
+
+
 
 class Generator(nn.Module):
     def __init__(self):

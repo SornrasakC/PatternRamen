@@ -63,11 +63,12 @@ def gen_checkpoint_path(checkpoint_base: Path, iteration):
     checkpoint_fp = checkpoint_base / f'checkpoint_{iteration}'
     return str(checkpoint_fp)
 
-def loader_cycle_it(data_loader):
+def loader_cycle_it(data_loader, cuda_float32=False):
     it = iter(data_loader)
     while True:
       try:
-        yield next(it)
+        data = next(it)
+        yield (d.cuda().to(dtype=torch.float32) for d in data)
       except StopIteration:
         it = iter(data_loader)
 
@@ -83,3 +84,5 @@ def lock_batch(image_batch, idx=0):
     for i in range(len(image_batch)):
         image_batch[i] = image_batch[idx]
     return image_batch
+
+
