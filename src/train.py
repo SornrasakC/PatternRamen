@@ -56,7 +56,7 @@ class Trainer():
 
   def init_optimizers(self, g_lr, d_line_lr, d_color_lr):
     print(f'Starting Optims g_lr: {g_lr:.0e}, d_line_lr: {d_line_lr:.0e}, d_color_lr: {d_color_lr:.0e}')
-    
+
     self.g_optimizer = optim.Adam(self.generator.parameters(), lr=g_lr, betas=(0.5, 0.999)) # paper lr 1e-4
     self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=d_line_lr, betas=(0.5, 0.999)) # paper lr 4e-4
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=d_color_lr, betas=(0.5, 0.999)) # paper lr 4e-4
@@ -76,7 +76,7 @@ class Trainer():
       line, color, transform_color, noise = next(it_train)
       self.time_logger.check('Data loading')
       
-      color_for_dis_color = instance_noise.add_noise(color, _it, total_it) if self.add_noise else color
+      color_for_dis_color = self.instance_noise.add_noise(color, _it, total_it) if self.add_noise else color
       
       self.d_optimizer_line.zero_grad()
       self.d_optimizer_color.zero_grad()
