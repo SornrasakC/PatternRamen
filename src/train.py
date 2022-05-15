@@ -76,7 +76,10 @@ class Trainer():
       line, color, transform_color, noise = next(it_train)
       self.time_logger.check('Data loading')
       
-      color_for_dis_color = self.instance_noise.add_noise(color, _it, total_it) if self.add_noise else color
+      if self.add_noise:
+        color_for_dis_color = self.instance_noise.add_noise(color.cpu(), _it, total_it).cuda()
+      else:
+        color_for_dis_color = color
       self.time_logger.check('Add Noise')
       
       self.d_optimizer_line.zero_grad()
