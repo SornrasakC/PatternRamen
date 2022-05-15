@@ -67,69 +67,26 @@ class Trainer():
     data_loader_train = gen_data_loader(self.data_path_train, shuffle=True, batch_size=self.batch_size, disable_random_line=self.disable_random_line)
     it_train = util.loader_cycle_it(data_loader_train, cuda_float32=True)
     
+    self.generator.train()
+    self.discriminator_color.train()
+    self.discriminator_line.train()
+
     print(f'Starting on iteration: {self.iteration}')
     total_it = self.iteration + iterations
     for _it in tqdm(range(self.iteration + 1, total_it + 1)):
-      self.generator.train()
-
       self.time_logger.start()
+      
       line, color, transform_color, noise = next(it_train)
       self.time_logger.check('Data loading')
       
-      if self.add_noise:
-        color_for_dis_color = self.instance_noise.add_noise(color, _it, total_it)
-      else:
-        color_for_dis_color = color
-      self.time_logger.check('Add Noise')
-      
-      self.d_optimizer_line.zero_grad()
-      self.d_optimizer_color.zero_grad()
-      self.time_logger.check('Preparation')
-
       generated_image = self.generator(line, transform_color, noise)
-      self.time_logger.check('Generator forward')
-
-
-      d_loss_line_real = self.discriminator_line.criterion(line, color, label=1)
-      d_loss_line_fake = self.discriminator_line.criterion(line, generated_image.detach(), label=0)
-      d_loss_line = d_loss_line_real + d_loss_line_fake
-
-      d_loss_color_real =  self.discriminator_color.criterion(color_for_dis_color, label=1)
-      d_loss_color_fake =  self.discriminator_color.criterion(generated_image.detach(), label=0)
-      d_loss_color = d_loss_color_real + d_loss_color_fake
       
-      d_loss = (d_loss_line + d_loss_color) / 2
-      self.time_logger.check('D Loss Calculation')
-
-      d_loss.backward()
-      self.time_logger.check('D Loss Backward')
-
-      self.d_optimizer_color.step()      
-      self.d_optimizer_line.step()
-      self.time_logger.check('D Optim Steps')
+      pack_d_loss = self.optimize_d(line, color, transform_color, noise, generated_image, _it, total_it)
+      pack_g_loss = self.optimize_g(line, color, transform_color, noise, generated_image)
       
-      self.g_optimizer.zero_grad()
+      pack_lr = util.pack_learning_rate(self.g_lr, self.d_line_lr, self.d_color_lr)
 
-      p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
-
-      g_loss_line = self.discriminator_line.criterion(line, generated_image, label=1)
-      g_loss_color = self.discriminator_color.criterion(generated_image, label=1)
-
-      g_loss = g_loss_line + g_loss_color + self.p_loss_weight * p_loss
-      self.time_logger.check('G Loss Calculation')
-
-      g_loss.backward()
-      self.time_logger.check('G Loss Backward')
-
-      self.g_optimizer.step()
-      self.time_logger.check('G Optim Steps')
-      
-      pack_loss = self.logger.pack_losses__(d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake, 
-        d_loss_color, d_loss_color_real, d_loss_color_fake, 
-        g_loss, g_loss_line, g_loss_color, p_loss)
-      pack_lr = self.logger.pack_learning_rates__(self.g_lr, self.d_line_lr, self.d_color_lr)
-
-      self.logger.log_losses(pack_loss=pack_loss, pack_lr=pack_lr, iteration=_it)
+      self.logger.log_losses(pack_loss={**pack_d_loss, **pack_g_loss}, pack_lr=pack_lr, iteration=_it)
       self.time_logger.check('Wandb Logging')
 
       if _it % self.checkpoint_interval == 0:
@@ -144,6 +101,62 @@ class Trainer():
     self.logger.finish()
     self.iteration += iterations
     self.save_checkpoint()
+
+  def optimize_d(self, line, color, transform_color, noise, generated_image, current_step, total_step):
+    self.d_optimizer_line.zero_grad()
+    self.d_optimizer_color.zero_grad()
+    self.time_logger.check('Preparation')
+
+    generated_image = self.generator(line, transform_color, noise)
+    self.time_logger.check('Generator forward')
+
+
+    d_loss_line_real = self.discriminator_line.criterion(line, color, label=1)
+    d_loss_line_fake = self.discriminator_line.criterion(line, generated_image.detach(), label=0)
+    d_loss_line = d_loss_line_real + d_loss_line_fake
+
+    if self.add_noise:
+      color = self.instance_noise.add_noise(color, current_step, total_step)
+      generated_image = self.instance_noise.add_noise(generated_image.detach(), current_step, total_step)
+
+    d_loss_color_real =  self.discriminator_color.criterion(color, label=1)
+    d_loss_color_fake =  self.discriminator_color.criterion(generated_image.detach(), label=0)
+    d_loss_color = d_loss_color_real + d_loss_color_fake
+    
+    d_loss = (d_loss_line + d_loss_color) / 2
+    self.time_logger.check('D Loss Calculation')
+
+    d_loss.backward()
+    self.time_logger.check('D Loss Backward')
+
+    self.d_optimizer_color.step()      
+    self.d_optimizer_line.step()
+    self.time_logger.check('D Optim Steps')
+
+    rets = [d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
+        d_loss_color, d_loss_color_real, d_loss_color_fake]
+    return util.pack_d_loss(*map(lambda x: x.item(), rets))
+  
+  def optimize_g(self, line, color, transform_color, noise, generated_image):
+    self.g_optimizer.zero_grad()
+
+    p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
+
+    g_loss_line = self.discriminator_line.criterion(line, generated_image, label=1)
+    g_loss_color = self.discriminator_color.criterion(generated_image, label=1)
+
+    g_loss = g_loss_line + g_loss_color + self.p_loss_weight * p_loss
+    self.time_logger.check('G Loss Calculation')
+
+    g_loss.backward()
+    self.time_logger.check('G Loss Backward')
+
+    self.g_optimizer.step()
+    self.time_logger.check('G Optim Steps')
+
+    rets = [g_loss, g_loss_line, g_loss_color, p_loss]
+    return self.logger.pack_d_loss__(*map(lambda x: x.item(), rets))
+    return list(map(lambda x: x.item(), rets))
   
   def evaluate(self, iteration, total_it):
     self.generator.eval()

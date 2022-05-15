@@ -28,34 +28,6 @@ class Logger:
         wandb.watch(trainer.discriminator_color)
         wandb.watch(trainer.generator)
 
-    def pack_losses__(self,
-                      d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
-                      d_loss_color, d_loss_color_real, d_loss_color_fake,
-                      g_loss, g_loss_line, g_loss_color, p_loss
-                      ):
-        return {
-            'd_loss': d_loss.detach(),
-            'd_loss_line': d_loss_line.detach(),
-            'd_loss_line_real': d_loss_line_real.detach(),
-            'd_loss_line_fake': d_loss_line_fake.detach(),
-            'd_loss_color': d_loss_color.detach(),
-            'd_loss_color_real': d_loss_color_real.detach(),
-            'd_loss_color_fake': d_loss_color_fake.detach(),
-            'g_loss': g_loss.detach(),
-            'g_loss_line': g_loss_line.detach(),
-            'g_loss_color': g_loss_color.detach(),
-            'p_loss': p_loss.detach(),
-        }
-
-    def pack_learning_rates__(self,
-                              g_lr, d_line_lr, d_color_lr
-                              ):
-        return {
-            "g_lr": g_lr,
-            "d_line_lr": d_line_lr,
-            "d_color_lr": d_color_lr,
-        }
-
     def log_losses(self, pack_loss, pack_lr, iteration, **kw):
         wandb.log({**pack_loss, **pack_lr, "iteration": iteration}, **kw)
 
