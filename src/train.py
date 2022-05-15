@@ -91,7 +91,7 @@ class Trainer():
       self.time_logger.check('Wandb Logging')
 
       if _it % self.checkpoint_interval == 0:
-        print(f"[Iteration: {_it}/{total_it}] g_loss: {g_loss:.4f} d_loss: {d_loss:.4f}")
+        print(f"[Iteration: {_it}/{total_it}] g_loss: {pack_g_loss['g_loss']:.4f} d_loss: {pack_d_loss['d_loss']:.4f}")
 
         self.save_checkpoint(iteration=_it)
         self.time_logger.check('Save Checkpoint')
