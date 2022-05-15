@@ -77,6 +77,7 @@ class Trainer():
       self.time_logger.check('Data loading')
       
       color_for_dis_color = self.instance_noise.add_noise(color, _it, total_it) if self.add_noise else color
+      self.time_logger.check('Add Noise')
       
       self.d_optimizer_line.zero_grad()
       self.d_optimizer_color.zero_grad()
