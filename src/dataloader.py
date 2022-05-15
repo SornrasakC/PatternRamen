@@ -157,6 +157,6 @@ class InstanceNoise:
             return color
 
         var = self.cal_var(current_step, total_step)
-        color_for_dis = random_noise(color.cpu(), mode='gaussian', mean=self.noise_mean, var=var)
+        color_for_dis = random_noise(color.cpu() / 255, mode='gaussian', mean=self.noise_mean, var=var)
         color_for_dis = torch.from_numpy(color_for_dis)
         return color_for_dis.cuda().to(dtype=torch.float32)
