@@ -80,8 +80,9 @@ class Trainer():
       self.time_logger.check('Data loading')
       
       generated_image = self.generator(line, transform_color, noise)
+      self.time_logger.check('Generator forward')
       
-      pack_d_loss = self.optimize_d(line, color, transform_color, noise, generated_image, _it, total_it)
+      pack_d_loss = self.optimize_d(line, color, transform_color, noise, generated_image.detach(), _it, total_it)
       pack_g_loss = self.optimize_g(line, color, transform_color, noise, generated_image)
       
       pack_lr = util.pack_learning_rate(self.g_lr, self.d_line_lr, self.d_color_lr)
@@ -105,33 +106,29 @@ class Trainer():
   def optimize_d(self, line, color, transform_color, noise, generated_image, current_step, total_step):
     self.d_optimizer_line.zero_grad()
     self.d_optimizer_color.zero_grad()
-    self.time_logger.check('Preparation')
 
-    generated_image = self.generator(line, transform_color, noise)
-    self.time_logger.check('Generator forward')
-
+    generated_image = generated_image.detach()
 
     d_loss_line_real = self.discriminator_line.criterion(line, color, label=1)
-    d_loss_line_fake = self.discriminator_line.criterion(line, generated_image.detach(), label=0)
+    d_loss_line_fake = self.discriminator_line.criterion(line, generated_image, label=0)
     d_loss_line = d_loss_line_real + d_loss_line_fake
 
     if self.add_noise:
       color = self.instance_noise.add_noise(color, current_step, total_step)
-      generated_image = self.instance_noise.add_noise(generated_image.detach(), current_step, total_step)
+      generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
     d_loss_color_real =  self.discriminator_color.criterion(color, label=1)
-    d_loss_color_fake =  self.discriminator_color.criterion(generated_image.detach(), label=0)
+    d_loss_color_fake =  self.discriminator_color.criterion(generated_image, label=0)
     d_loss_color = d_loss_color_real + d_loss_color_fake
     
     d_loss = (d_loss_line + d_loss_color) / 2
     self.time_logger.check('D Loss Calculation')
 
     d_loss.backward()
-    self.time_logger.check('D Loss Backward')
 
     self.d_optimizer_color.step()      
     self.d_optimizer_line.step()
-    self.time_logger.check('D Optim Steps')
+    self.time_logger.check('D Optim Backward / Steps')
 
     rets = [d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
         d_loss_color, d_loss_color_real, d_loss_color_fake]
