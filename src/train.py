@@ -9,6 +9,9 @@ from torch.nn import functional as F
 from torch import nn
 import torchvision
 
+from PIL import Image
+import numpy as np
+from skimage.util import random_noise
 from tqdm import tqdm
 import os
 
@@ -52,7 +55,7 @@ class Trainer():
     self.d_optimizer_line = optim.Adam(self.discriminator_line.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
     self.d_optimizer_color = optim.Adam(self.discriminator_color.parameters(), lr=4e-4, betas=(0.5, 0.999)) # paper lr 4e-4
 
-  def train(self, iterations):
+  def train(self, iterations,add_noise=True):
     self.logger.watch(self)
 
     data_loader_train = gen_data_loader(self.data_path_train, shuffle=True, batch_size=self.batch_size, disable_random_line=self.disable_random_line)
@@ -78,7 +81,12 @@ class Trainer():
 
       generated_image = self.generator(line, transform_color, noise)
       self.time_logger.check('Generator forward')
-
+      if add_noise:
+        color_for_dis = random_noise(color, mode='gaussian', var=0.05**2)
+        color_for_dis = (255*color_for_dis).astype(np.uint8)
+        color_for_dis = Image.fromarray(color_for_dis)
+      else:
+        color_for_dis = color
       d_loss_line_real = torch.mean( (self.discriminator_line(line, color) - 1)**2 )
       d_loss_line_fake = torch.mean( self.discriminator_line(line, generated_image.detach())**2 )
       d_loss_line = d_loss_line_real + d_loss_line_fake
