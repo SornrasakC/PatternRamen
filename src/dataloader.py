@@ -148,14 +148,12 @@ class InstanceNoise:
         self.noise_mean = 0
     
     def cal_var(self, current_step, total_step):
-        total_step = min(30_000, total_step)
-        var = self.noise_start_var * ((total_step - current_step) / total_step)
+        total_step = 20_000
+        ratio = (total_step - current_step) / total_step
+        var = self.noise_start_var * max(ratio, 0)
         return var
 
     def add_noise(self, color, current_step, total_step):
-        # if random.choice([True, False]):
-        #     return color
-
         var = self.cal_var(current_step, total_step)
         color_for_dis = random_noise(color.cpu(), mode='gaussian', mean=self.noise_mean, var=var)
         color_for_dis = torch.from_numpy(color_for_dis)
