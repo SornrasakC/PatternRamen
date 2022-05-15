@@ -77,7 +77,7 @@ class Trainer():
       self.time_logger.check('Data loading')
       
       if self.add_noise:
-        color_for_dis_color = self.instance_noise.add_noise(color.cpu(), _it, total_it).cuda()
+        color_for_dis_color = self.instance_noise.add_noise(color, _it, total_it)
       else:
         color_for_dis_color = color
       self.time_logger.check('Add Noise')

@@ -23,6 +23,7 @@ class Discriminator(nn.Module):
         return x
 
     def criterion(self, *x, label: int):
+        assert len(x) == self.input_num
         pred = self(*x)
         return torch.mean(  (pred - label)**2 )
 
