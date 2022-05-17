@@ -20,7 +20,7 @@ class Trainer():
       checkpoint_path=None, checkpoint_folder_parent=None, checkpoint_interval=100,
       data_path_train=None, data_path_val=None, batch_size=16, 
       g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4, inference_size=3,
-      add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1,
+      add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1, use_gp_loss=True,
     ):
 
     self.discriminator_line = Discriminator(input_num=2)
@@ -36,6 +36,7 @@ class Trainer():
     self.p_loss_weight = p_loss_weight
     self.n_critics_line = n_critics_line
     self.n_critics_color = n_critics_color
+    self.use_gp_loss = use_gp_loss
 
     self.g_lr, self.d_line_lr, self.d_color_lr = g_lr, d_line_lr, d_color_lr
     self.init_optimizers(g_lr, d_line_lr, d_color_lr)
@@ -149,11 +150,18 @@ class Trainer():
       color = self.instance_noise.add_noise(color, current_step, total_step)
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
-    d_loss_color_real = self.discriminator_color(color).mean()
-    d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
-    d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
+    if self.use_gp_loss:
+      d_loss_color_real = self.discriminator_color(color).mean()
+      d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
+      d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
+      d_loss_color.backward()
+    
+    if not self.use_gp_loss:
+      d_loss_color_real = self.discriminator_color.criterion(color, label=1)
+      d_loss_color_fake = self.discriminator_color.criterion(generated_image, label=0)
+      d_loss_color = (d_loss_color_real + d_loss_color_fake) / 2
+      d_loss_color.backward()
 
-    d_loss_color.backward()
     self.d_optimizer_color.step()
 
     rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
