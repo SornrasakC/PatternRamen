@@ -110,8 +110,10 @@ class Trainer():
     self.save_checkpoint()
 
   def optimize_d(self, line, color, generated_image):
+    generated_image = generated_image.detach()
+
     for _ in range(self.n_critics_line):
-      pack_d_loss_line = self.optimize_d_line(line, color, generated_image.detach())
+      pack_d_loss_line = self.optimize_d_line(line, color, generated_image)
     self.time_logger.check(f'D Line Optimized n: {self.n_critics_line}')
 
     for _ in range(self.n_critics_color):
@@ -148,7 +150,7 @@ class Trainer():
     d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
     d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
 
-    d_loss_color.backward(retain_graph=True)
+    d_loss_color.backward()
     self.d_optimizer_color.step()
 
     rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
@@ -156,7 +158,7 @@ class Trainer():
 
   def calc_d_loss_gp(self, color, generated_image):
     ratio = next(self.etc_loader_it).cuda()
-    interpolated_image = ratio * color + (1 - ratio) * generated_image
+    interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
     d_fake = self.discriminator_color(interpolated_image)
 
     gradients = torch_grad(outputs=d_fake, inputs=interpolated_image,
