@@ -61,7 +61,7 @@ class Logger:
                 val = getattr(trainer, attr)
                 config[attr] = repr(val)
             except AttributeError:
-                print(f'Out of config: {func_name}')
+                print(f'Out of config: {attr}')
 
         return config
 
