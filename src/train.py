@@ -110,14 +110,15 @@ class Trainer():
     self.save_checkpoint()
 
   def optimize_d(self, line, color, generated_image):
-    generated_image = generated_image.detach()
+    # generated_image = generated_image.detach()
 
     for _ in range(self.n_critics_line):
-      pack_d_loss_line = self.optimize_d_line(line, color, generated_image)
+      pack_d_loss_line = self.optimize_d_line(line, color, generated_image.detach())
     self.time_logger.check(f'D Line Optimized n: {self.n_critics_line}')
 
     for _ in range(self.n_critics_color):
       pack_d_loss_color = self.optimize_d_color(color, generated_image)
+      generated_image.grad.data.zero_()
     self.time_logger.check(f'D Color Optimized n: {self.n_critics_color}')
     
     d_loss = pack_d_loss_line['d_loss_line'] + pack_d_loss_color['d_loss_color']
@@ -165,7 +166,7 @@ class Trainer():
 
     gradients = torch_grad(outputs=d_fake, inputs=interpolated_image,
                         grad_outputs=torch.ones(d_fake.size()).cuda(),
-                        create_graph=True, retain_graph=True, allow_unused=True)[0]
+                        create_graph=True, retain_graph=True)[0]
     gradients = gradients.view(self.batch_size, -1)
     gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
     GP_lambda = 10
