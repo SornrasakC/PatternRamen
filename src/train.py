@@ -19,8 +19,8 @@ class Trainer():
       wandb_run_id=None, disable_time_logger=False, disable_random_line=False,
       checkpoint_path=None, checkpoint_folder_parent=None, checkpoint_interval=100,
       data_path_train=None, data_path_val=None, batch_size=16, 
-      g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4,
-      add_noise=False, n_critics_line=1, n_critics_color=1
+      g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4, inference_size=3,
+      add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1,
     ):
 
     self.discriminator_line = Discriminator(input_num=2)
@@ -33,7 +33,7 @@ class Trainer():
     self.discriminator_color.cuda()
     self.generator.cuda()
     self.perceptual_criterion = nn.L1Loss()
-    self.p_loss_weight = 1
+    self.p_loss_weight = p_loss_weight
     self.n_critics_line = n_critics_line
     self.n_critics_color = n_critics_color
 
@@ -44,7 +44,7 @@ class Trainer():
     self.checkpoint_interval = checkpoint_interval
     self.logger = Logger(wandb_run_id=wandb_run_id, checkpoint_path=checkpoint_path)
     self.time_logger = TimeLogger(disabled=disable_time_logger)
-    self.inference_size = 2
+    self.inference_size = inference_size
     self.checkpoint_base = util.get_checkpoint_base(checkpoint_folder_parent)
     self.data_path_train = data_path_train
     self.data_path_val = data_path_val
@@ -105,6 +105,9 @@ class Trainer():
         self.evaluate(iteration=_it, total_it=total_it)
         self.time_logger.check('Evaluation')
       
+
+
+      pass
     self.logger.finish()
     self.iteration += iterations
     self.save_checkpoint()
@@ -197,12 +200,12 @@ class Trainer():
     log_kw = {'caption': f'Iteration: {iteration}', 'commit': False, 'iteration': iteration}
 
     opt = {'batch_size': self.inference_size, 'disable_random_line': self.disable_random_line, 'is_validate': False}
-    it_train_s = iter(gen_data_loader(self.data_path_train, shuffle=True, **opt))
     it_train = iter(gen_data_loader(self.data_path_train, shuffle=False, **opt))
+    it_train_s = iter(gen_data_loader(self.data_path_train, shuffle=True, **opt))
 
     opt = {'batch_size': self.inference_size, 'disable_random_line': self.disable_random_line, 'is_validate': True}
-    it_val_s = iter(gen_data_loader(self.data_path_val, shuffle=True, **opt))
     it_val = iter(gen_data_loader(self.data_path_val, shuffle=False, **opt))
+    it_val_s = iter(gen_data_loader(self.data_path_val, shuffle=True, **opt))
 
     def _evaluate(it_data, log_msg, **inf_kw):
       print(f'''
@@ -210,16 +213,21 @@ class Trainer():
         {log_msg}
       ------------
       ''')
-      pic_row_list = self.inference(it_data, **inf_kw)
-      self.logger.log_image_row_list(pic_row_list, log_msg=log_msg, **log_kw)
+      pic_row_list = self.inference(it_data, lock_line=True, **inf_kw)
+      self.logger.log_image_row_list(pic_row_list, log_msg=f'{log_msg}_lock_line', **log_kw)
+      for pic_row in pic_row_list:
+        util.show_image_row(pic_row)
+
+      pic_row_list = self.inference(it_data, lock_color=True, **inf_kw)
+      self.logger.log_image_row_list(pic_row_list, log_msg=f'{log_msg}_lock_color', **log_kw)
       for pic_row in pic_row_list:
         util.show_image_row(pic_row)
     
-    _evaluate(it_train, log_msg='train_images_fixed', lock_line=True)
-    _evaluate(it_train_s, log_msg='train_images_shuffle', lock_line=True)
+    _evaluate(it_train, log_msg='train_images_fixed')
+    _evaluate(it_train_s, log_msg='train_images_shuffle')
     
-    _evaluate(it_val, log_msg='val_images_fixed', lock_line=True)
-    _evaluate(it_val_s, log_msg='val_images_shuffle', lock_line=True)
+    _evaluate(it_val, log_msg='val_images_fixed')
+    _evaluate(it_val_s, log_msg='val_images_shuffle')
     
     self.generator.train()
 

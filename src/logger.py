@@ -10,10 +10,13 @@ class Logger:
         self.checkpoint_path = checkpoint_path
         self._watch_disable_flag__()
 
-    def init_wandb(self):
+    def init_wandb(self, trainer):
+        config = self.get_args_config(trainer)
+        
         options = {
             'entity': 'pattern-ramen',
             'project': 'colorization',
+            'config': config,
             'id': self.wandb_run_id,
             'resume': 'must' if self.checkpoint_path != None else None
         }
@@ -23,7 +26,7 @@ class Logger:
         wandb.define_metric("*", step_metric="iteration")
 
     def watch(self, trainer):
-        self.init_wandb()
+        self.init_wandb(trainer)
         wandb.watch(trainer.discriminator_line)
         wandb.watch(trainer.discriminator_color)
         wandb.watch(trainer.generator)
@@ -39,9 +42,8 @@ class Logger:
 
         wandb.log({log_msg: image, 'iteration': iteration}, **kw)
 
-    # def log_image_row(self, np_image_row, **kw):
-    #     np_image = np.concatenate(np_image_row, axis=1)
-    #     self.log_image(np_image, **kw)
+    def log_etc(self, whatever_dict, iteration, **kw):
+        wandb.log({**whatever_dict, "iteration": iteration}, **kw)
 
     def log_image_row_list(self, np_image_rows, **kw):
         np_images = [
@@ -49,6 +51,19 @@ class Logger:
             for np_image_row in np_image_rows
         ]
         self.log_image(np_images, is_img_list=True, **kw)
+
+    def get_args_config(self, trainer):
+        attr_list = trainer.__init__.__code__.co_varnames
+        
+        config = {}
+        for attr in attr_list:
+            try:
+                val = getattr(trainer, attr)
+                config[attr] = repr(val)
+            except AttributeError:
+                print(f'Out of config: {func_name}')
+
+        return config
 
     def finish(self):
         wandb.finish()

@@ -55,7 +55,7 @@ class XDoGData(torch.utils.data.Dataset):
         super(XDoGData, self).__init__()
         
         self.folder_path = folder_path
-        self.data = os.listdir(folder_path)
+        self.data = sorted(os.listdir(folder_path))
         self.gamma = param["gamma"]
         self.phi = param["phi"]
         self.epsilon = param["eps"]
