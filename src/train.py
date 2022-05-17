@@ -110,15 +110,12 @@ class Trainer():
     self.save_checkpoint()
 
   def optimize_d(self, line, color, generated_image):
-    # generated_image = generated_image.detach()
-
     for _ in range(self.n_critics_line):
       pack_d_loss_line = self.optimize_d_line(line, color, generated_image.detach())
     self.time_logger.check(f'D Line Optimized n: {self.n_critics_line}')
 
     for _ in range(self.n_critics_color):
       pack_d_loss_color = self.optimize_d_color(color, generated_image)
-      generated_image.grad.data.zero_()
     self.time_logger.check(f'D Color Optimized n: {self.n_critics_color}')
     
     d_loss = pack_d_loss_line['d_loss_line'] + pack_d_loss_color['d_loss_color']
@@ -132,7 +129,7 @@ class Trainer():
     d_loss_line_fake = self.discriminator_line.criterion(line, generated_image, label=0)
     d_loss_line = (d_loss_line_real + d_loss_line_fake) / 2
 
-    d_loss_line.backward()
+    d_loss_line.backward(retain_graph=True)
     self.d_optimizer_line.step()
 
     rets = [d_loss_line, d_loss_line_real, d_loss_line_fake]
@@ -153,8 +150,6 @@ class Trainer():
 
     d_loss_color.backward()
     self.d_optimizer_color.step()
-
-    self.time_logger.check('D Loss Calculation')
 
     rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
     return util.pack_d_loss_color(*map(lambda x: x.item(), rets))
