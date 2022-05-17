@@ -129,7 +129,7 @@ class Trainer():
     d_loss_line_fake = self.discriminator_line.criterion(line, generated_image, label=0)
     d_loss_line = (d_loss_line_real + d_loss_line_fake) / 2
 
-    d_loss_line.backward(retain_graph=True)
+    d_loss_line.backward()
     self.d_optimizer_line.step()
 
     rets = [d_loss_line, d_loss_line_real, d_loss_line_fake]
@@ -148,7 +148,7 @@ class Trainer():
     d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
     d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
 
-    d_loss_color.backward()
+    d_loss_color.backward(retain_graph=True)
     self.d_optimizer_color.step()
 
     rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
