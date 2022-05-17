@@ -51,7 +51,7 @@ def draw_random_line(img, line_range):
 
 
 class XDoGData(torch.utils.data.Dataset):
-    def __init__(self, param, folder_path, is_validate=False, disable_random_line=False):
+    def __init__(self, param, folder_path, is_validate=False, use_xdog=True, disable_random_line=False):
         super(XDoGData, self).__init__()
         
         self.folder_path = folder_path
@@ -62,6 +62,7 @@ class XDoGData(torch.utils.data.Dataset):
         self.k = param["k"]
         self.sigma = param["sigma"]
         self.is_validate = is_validate
+        self.use_xdog = use_xdog
         self.disable_random_line = disable_random_line
 
         train_transform = nn.Sequential(
@@ -88,7 +89,7 @@ class XDoGData(torch.utils.data.Dataset):
         sigma_rand = np.random.uniform(self.sigma, self.sigma + 0.2)
         # noise = np.random.normal(0, 1, 256)
         noise = fixed_noise
-        is_xdog = random.choice([True, False])
+        is_xdog = random.choice([True, False]) if self.use_xdog else False
         img = cv2.resize(img, (512, 256))
 
         if is_xdog:  ## return xdog image
@@ -131,8 +132,8 @@ class XDoGData(torch.utils.data.Dataset):
         return len(self.data)
 
 
-def gen_data_loader(data_path, is_validate=False, disable_random_line=False, **kw):
-    data = XDoGData(PARAM, data_path, is_validate, disable_random_line=disable_random_line)
+def gen_data_loader(data_path, is_validate=False, use_xdog=True, disable_random_line=False, **kw):
+    data = XDoGData(PARAM, data_path, is_validate, use_xdog=use_xdog, disable_random_line=disable_random_line)
     defaults = {
         'shuffle': True,
         'batch_size': 16,

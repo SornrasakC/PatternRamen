@@ -17,7 +17,7 @@ import os
 
 class Trainer():
   def __init__(self,
-      wandb_run_id=None, disable_time_logger=False, disable_random_line=False,
+      wandb_run_id=None, disable_time_logger=False, use_xdog=True, disable_random_line=False,
       checkpoint_path=None, checkpoint_folder_parent=None, checkpoint_interval=100,
       data_path_train=None, data_path_val=None, batch_size=16, 
       g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4, inference_size=3,
@@ -51,6 +51,7 @@ class Trainer():
     self.data_path_train = data_path_train
     self.data_path_val = data_path_val
     self.batch_size = batch_size
+    self.use_xdog = use_xdog
     self.disable_random_line = disable_random_line
 
     self.add_noise = add_noise
@@ -69,7 +70,13 @@ class Trainer():
   def train(self, iterations):
     self.logger.watch(self)
 
-    data_loader_train = gen_data_loader(self.data_path_train, shuffle=True, batch_size=self.batch_size, disable_random_line=self.disable_random_line)
+    data_loader_train = gen_data_loader(
+      self.data_path_train,
+      shuffle=True,
+      batch_size=self.batch_size,
+      use_xdog=self.use_xdog,
+      disable_random_line=self.disable_random_line
+    )
     it_train = util.loader_cycle_it(data_loader_train, cuda_float32=True)
     
     self.generator.train()
