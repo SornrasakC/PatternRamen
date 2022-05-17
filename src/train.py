@@ -14,6 +14,7 @@ import numpy as np
 from tqdm import tqdm
 import os
 
+
 class Trainer():
   def __init__(self,
       wandb_run_id=None, disable_time_logger=False, disable_random_line=False,
@@ -58,7 +59,6 @@ class Trainer():
 
     self.load_checkpoint(checkpoint_path)
         
-
   def init_optimizers(self, g_lr, d_line_lr, d_color_lr):
     print(f'Starting Optims g_lr: {g_lr:.0e}, d_line_lr: {d_line_lr:.0e}, d_color_lr: {d_color_lr:.0e}')
 
@@ -200,7 +200,6 @@ class Trainer():
 
     rets = [g_loss, g_loss_line, g_loss_color, p_loss]
     return util.pack_g_loss(*map(lambda x: x.item(), rets))
-
 
   def evaluate(self, iteration, total_it):
     self.generator.eval()
