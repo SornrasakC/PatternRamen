@@ -19,8 +19,8 @@ class Trainer():
       wandb_run_id=None, disable_time_logger=False, disable_random_line=False,
       checkpoint_path=None, checkpoint_folder_parent=None, checkpoint_interval=100,
       data_path_train=None, data_path_val=None, batch_size=16, 
-      g_lr=1e-4, d_line_lr=4e-4, d_color_lr=4e-4,
-      add_noise=False,
+      g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4,
+      add_noise=False, n_critics_line=1, n_critics_color=1
     ):
 
     self.discriminator_line = Discriminator(input_num=2)
@@ -34,6 +34,8 @@ class Trainer():
     self.generator.cuda()
     self.perceptual_criterion = nn.L1Loss()
     self.p_loss_weight = 1
+    self.n_critics_line = n_critics_line
+    self.n_critics_color = n_critics_color
 
     self.g_lr, self.d_line_lr, self.d_color_lr = g_lr, d_line_lr, d_color_lr
     self.init_optimizers(g_lr, d_line_lr, d_color_lr)
@@ -75,7 +77,9 @@ class Trainer():
 
     print(f'Starting on iteration: {self.iteration}')
     total_it = self.iteration + iterations
+    self.total_step = total_it
     for _it in tqdm(range(self.iteration + 1, total_it + 1)):
+      self.current_step = _it
       self.time_logger.start()
 
       line, color, transform_color, noise = next(it_train)
@@ -84,7 +88,7 @@ class Trainer():
       generated_image = self.generator(line, transform_color, noise)
       self.time_logger.check('Generator forward')
       
-      pack_d_loss = self.optimize_d(line, color, transform_color, noise, generated_image.detach(), _it, total_it)
+      pack_d_loss = self.optimize_d(line, color, generated_image)
       pack_g_loss = self.optimize_g(line, color, transform_color, noise, generated_image)
       
       pack_lr = util.pack_learning_rate(self.g_lr, self.d_line_lr, self.d_color_lr)
@@ -105,37 +109,55 @@ class Trainer():
     self.iteration += iterations
     self.save_checkpoint()
 
-  def optimize_d(self, line, color, transform_color, noise, generated_image, current_step, total_step):
-    self.d_optimizer_line.zero_grad()
-    self.d_optimizer_color.zero_grad()
-
+  def optimize_d(self, line, color, generated_image):
     generated_image = generated_image.detach()
+
+    for _ in range(self.n_critics_line):
+      pack_d_loss_line = self.optimize_d_line(line, color, generated_image)
+    self.time_logger.check(f'D Line Optimized n: {self.n_critics_line}')
+
+    for _ in range(self.n_critics_color):
+      pack_d_loss_color = self.optimize_d_color(color, generated_image)
+    self.time_logger.check(f'D Color Optimized n: {self.n_critics_color}')
+    
+    d_loss = pack_d_loss_line['d_loss_line'] + pack_d_loss_color['d_loss_color']
+
+    return util.pack_d_loss(d_loss, pack_d_loss_line, pack_d_loss_color)
+  
+  def optimize_d_line(self, line, color, generated_image):
+    self.d_optimizer_line.zero_grad()
 
     d_loss_line_real = self.discriminator_line.criterion(line, color, label=1)
     d_loss_line_fake = self.discriminator_line.criterion(line, generated_image, label=0)
-    d_loss_line = d_loss_line_real + d_loss_line_fake
+    d_loss_line = (d_loss_line_real + d_loss_line_fake) / 2
+
+    d_loss_line.backward()
+    self.d_optimizer_line.step()
+
+    rets = [d_loss_line, d_loss_line_real, d_loss_line_fake]
+    return util.pack_d_loss_line(*map(lambda x: x.item(), rets))
+
+  def optimize_d_color(self, color, generated_image):
+    self.d_optimizer_color.zero_grad()
 
     if self.add_noise:
+      current_step, total_step = self.current_step, self.total_step
+
       color = self.instance_noise.add_noise(color, current_step, total_step)
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
-    d_loss_color_real =  self.discriminator_color(color).mean()
+    d_loss_color_real = self.discriminator_color(color).mean()
     d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
     d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
-    
-    d_loss = (d_loss_line / 2) + d_loss_color
+
+    d_loss_color.backward()
+    self.d_optimizer_color.step()
+
     self.time_logger.check('D Loss Calculation')
 
-    d_loss.backward()
+    rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
+    return util.pack_d_loss_color(*map(lambda x: x.item(), rets))
 
-    self.d_optimizer_color.step()      
-    self.d_optimizer_line.step()
-    self.time_logger.check('D Optim Backward / Steps')
-
-    rets = [d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
-        d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
-    return util.pack_d_loss(*map(lambda x: x.item(), rets))
-  
   def calc_d_loss_gp(self, color, generated_image):
     ratio = next(self.etc_loader_it).cuda()
     interpolated_image = ratio * color + (1 - ratio) * generated_image
