@@ -1,12 +1,13 @@
 from src.model import Discriminator, Generator
 import src.util as util
 from src.logger import Logger, TimeLogger
-from src.dataloader import gen_data_loader, InstanceNoise
+from src.dataloader import gen_data_loader, InstanceNoise, gen_etc_loader
 
 import torch
 from torch import optim
 from torch.nn import functional as F
 from torch import nn
+from torch.autograd import grad as torch_grad
 import torchvision
 
 import numpy as np
@@ -50,6 +51,7 @@ class Trainer():
 
     self.add_noise = add_noise
     self.instance_noise = InstanceNoise()
+    self.etc_loader_it = iter(gen_etc_loader(batch_size=batch_size))
 
     self.load_checkpoint(checkpoint_path)
         
@@ -117,11 +119,11 @@ class Trainer():
       color = self.instance_noise.add_noise(color, current_step, total_step)
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
-    d_loss_color_real =  self.discriminator_color.criterion(color, label=1)
-    d_loss_color_fake =  self.discriminator_color.criterion(generated_image, label=0)
-    d_loss_color = d_loss_color_real + d_loss_color_fake
+    d_loss_color_real =  self.discriminator_color(color).mean()
+    d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
+    d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
     
-    d_loss = (d_loss_line + d_loss_color) / 2
+    d_loss = (d_loss_line / 2) + d_loss_color
     self.time_logger.check('D Loss Calculation')
 
     d_loss.backward()
@@ -131,9 +133,23 @@ class Trainer():
     self.time_logger.check('D Optim Backward / Steps')
 
     rets = [d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
-        d_loss_color, d_loss_color_real, d_loss_color_fake]
+        d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
     return util.pack_d_loss(*map(lambda x: x.item(), rets))
   
+  def calc_d_loss_gp(self, color, generated_image):
+    ratio = next(self.etc_loader_it).cuda()
+    interpolated_image = ratio * color + (1 - ratio) * generated_image
+    d_fake = self.discriminator_color(interpolated_image)
+
+    gradients = torch_grad(outputs=d_fake, inputs=interpolated_image,
+                        grad_outputs=torch.ones(d_fake.size()).cuda(),
+                        create_graph=True, retain_graph=True)[0]
+    gradients = gradients.view(self.batch_size, -1)
+    gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
+    GP_lambda = 10
+    gradient_penalty = GP_lambda * ((gradients_norm - 1) ** 2).mean()
+    return d_fake.mean(), gradient_penalty
+
   def optimize_g(self, line, color, transform_color, noise, generated_image):
     self.g_optimizer.zero_grad()
 
@@ -153,7 +169,8 @@ class Trainer():
 
     rets = [g_loss, g_loss_line, g_loss_color, p_loss]
     return util.pack_g_loss(*map(lambda x: x.item(), rets))
-  
+
+
   def evaluate(self, iteration, total_it):
     self.generator.eval()
 

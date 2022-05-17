@@ -142,6 +142,28 @@ def gen_data_loader(data_path, is_validate=False, disable_random_line=False, **k
     data_loader = DataLoader(data, **opt)
     return data_loader
 
+class WganDataset(torch.utils.data.Dataset):
+    def __init__(self, data_len):
+        self.data_len = data_len
+
+    def __getitem__(self, index):
+        return torch.randn(1, 1, 1)
+
+    def __len__(self):
+        return self.data_len
+
+def gen_etc_loader(**kw):
+    data = WganDataset(int(1e6))
+    defaults = {
+        'shuffle': False,
+        'batch_size': 16,
+        'num_workers': 4,
+    }
+    opt = {**defaults, **kw}
+
+    return DataLoader(data, **opt)
+
+
 class InstanceNoise:
     def __init__(self):
         self.noise_start_var = 0.1 ** 2

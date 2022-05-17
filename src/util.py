@@ -88,7 +88,7 @@ def lock_batch(image_batch, idx=0):
 
 def pack_d_loss(
         d_loss, d_loss_line, d_loss_line_real, d_loss_line_fake,
-        d_loss_color, d_loss_color_real, d_loss_color_fake
+        d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty
     ):
         return {
             'd_loss': d_loss,
@@ -98,6 +98,7 @@ def pack_d_loss(
             'd_loss_color': d_loss_color,
             'd_loss_color_real': d_loss_color_real,
             'd_loss_color_fake': d_loss_color_fake,
+            'gradient_penalty': gradient_penalty,
         }
     
 def pack_g_loss(
