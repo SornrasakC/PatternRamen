@@ -213,7 +213,7 @@ class Trainer():
 
     log_kw = {'caption': f'Iteration: {iteration}', 'commit': False, 'iteration': iteration}
 
-    opt = {'batch_size': self.inference_size, 'disable_random_line': self.disable_random_line, 'is_validate': False}
+    opt = {'batch_size': self.inference_size, 'use_xdog': self.use_xdog, 'disable_random_line': self.disable_random_line, 'is_validate': False}
     it_train = iter(gen_data_loader(self.data_path_train, shuffle=False, **opt))
     it_train_s = iter(gen_data_loader(self.data_path_train, shuffle=True, **opt))
 
