@@ -154,7 +154,7 @@ class Trainer():
 
       d_loss_line_fake = self.discriminator_line._criterion_ls(d_fake, label=0)
       
-      d_loss_line = d_loss_line_fake + d_loss_line_real + self.gp_lambda_line * gradient_penalty
+      d_loss_line = d_loss_line_fake + d_loss_line_real + self.gp_lambda_line * gradient_penalty_line
     
     if not self.use_gp_loss_line:
       d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
@@ -187,7 +187,7 @@ class Trainer():
 
       d_loss_color_fake = self.discriminator_color._criterion_ls(d_fake, label=0)
       
-      d_loss_color = d_loss_color_fake + d_loss_color_real + self.gp_lambda_color * gradient_penalty
+      d_loss_color = d_loss_color_fake + d_loss_color_real + self.gp_lambda_color * gradient_penalty_color
     
     if not self.use_gp_loss_color:
       d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
