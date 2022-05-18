@@ -22,10 +22,13 @@ class Discriminator(nn.Module):
         x = torch.sigmoid(x)
         return x
 
-    def criterion(self, *x, label: int):
+    def criterion_ls(self, *x, label: int):
         assert len(x) == self.input_num
         pred = self(*x)
-        return torch.mean(  (pred - label)**2 )
+        return self._criterion_ls(pred, label)
+    
+    def _criterion_ls(self, pred, label: int):
+        return torch.mean(  (pred - label)**2 ) / 2
 
 
 
