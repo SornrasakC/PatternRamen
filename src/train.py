@@ -144,12 +144,13 @@ class Trainer():
 
     if self.use_gp_loss_line:
       ratio = torch.randn(self.batch_size, 1, 1, 1).expand_as(color).cuda()
-      interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
+      interpolated_image = ratio * color + (1 - ratio) * generated_image
+      dis_input_fake = torch.cat([line, interpolated_image], axis=1).requires_grad_(True)
 
       d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
 
-      d_fake = self.discriminator_line(line, interpolated_image)
-      gradient_penalty_line = self.calc_gradient_penalty(d_fake, torch.cat([line, interpolated_image], axis=1))
+      d_fake = self.discriminator_line.forward_raw(dis_input_fake)
+      gradient_penalty_line = self.calc_gradient_penalty(d_fake, dis_input_fake)
 
       d_loss_line_fake = self.discriminator_line._criterion_ls(d_fake, label=0)
       

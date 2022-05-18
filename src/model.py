@@ -22,6 +22,11 @@ class Discriminator(nn.Module):
         x = torch.sigmoid(x)
         return x
 
+    def forward_raw(self, x):
+        x = self.blocks(x)
+        x = torch.sigmoid(x)
+        return x
+
     def criterion_ls(self, *x, label: int):
         assert len(x) == self.input_num
         pred = self(*x)
