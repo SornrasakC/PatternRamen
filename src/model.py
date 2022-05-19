@@ -33,7 +33,12 @@ class Discriminator(nn.Module):
         return self._criterion_ls(pred, label)
     
     def _criterion_ls(self, pred, label: int):
-        return torch.mean(  (pred - label)**2 ) / 2
+        if label == 1:
+            sign = 1
+        if label == 0:
+            sign = -1
+
+        return torch.mean(  (1 - sign * pred)**2 ) / 2
 
 
 

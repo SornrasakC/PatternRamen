@@ -143,7 +143,7 @@ class Trainer():
     self.d_optimizer_line.zero_grad()
 
     if self.use_gp_loss_line:
-      ratio = torch.randn(self.batch_size, 1, 1, 1).expand_as(color).cuda()
+      ratio = torch.FloatTensor(self.batch_size, 1, 1, 1).uniform_(0, 1).cuda()
       interpolated_image = ratio * color + (1 - ratio) * generated_image
       dis_input_fake = torch.cat([line, interpolated_image], axis=1).requires_grad_(True)
 
@@ -154,7 +154,7 @@ class Trainer():
 
       d_loss_line_fake = self.discriminator_line._criterion_ls(d_fake, label=0)
       
-      d_loss_line = d_loss_line_fake + d_loss_line_real + self.gp_lambda_line * gradient_penalty_line
+      d_loss_line = d_loss_line_real + d_loss_line_fake + self.gp_lambda_line * gradient_penalty_line
     
     if not self.use_gp_loss_line:
       d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
@@ -177,7 +177,8 @@ class Trainer():
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
     if self.use_gp_loss_color:
-      ratio = torch.randn(self.batch_size, 1, 1, 1).expand_as(color).cuda()
+      # https://github.com/AlexiaJM/MaximumMarginGANs/blob/master/Code/GAN.py#L924
+      ratio = torch.FloatTensor(self.batch_size, 1, 1, 1).uniform_(0, 1).cuda()
       interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
 
       d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
@@ -187,7 +188,7 @@ class Trainer():
 
       d_loss_color_fake = self.discriminator_color._criterion_ls(d_fake, label=0)
       
-      d_loss_color = d_loss_color_fake + d_loss_color_real + self.gp_lambda_color * gradient_penalty_color
+      d_loss_color = d_loss_color_real + d_loss_color_fake + self.gp_lambda_color * gradient_penalty_color
     
     if not self.use_gp_loss_color:
       d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
@@ -205,8 +206,10 @@ class Trainer():
                         grad_outputs=torch.ones(d_fake.size()).cuda(),
                         create_graph=True, retain_graph=True)[0]
     gradients = gradients.view(self.batch_size, -1)
+    
     gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-    gradient_penalty = (gradients_norm - 1).mean() ** 2
+    gradient_penalty = torch.mean( (gradients_norm ** 2) - 1 )
+
     return gradient_penalty
 
   def optimize_g(self, line, color, transform_color, noise, generated_image):
