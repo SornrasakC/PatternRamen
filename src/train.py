@@ -208,7 +208,7 @@ class Trainer():
     gradients = gradients.view(self.batch_size, -1)
     
     gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-    gradient_penalty = torch.mean( (gradients_norm ** 2) - 1 )
+    gradient_penalty = torch.mean( (gradients_norm - 1) ** 2 )
 
     return gradient_penalty
 
