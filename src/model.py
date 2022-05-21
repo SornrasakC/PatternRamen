@@ -20,11 +20,13 @@ class Discriminator(nn.Module):
         x = torch.cat(x, dim=1)
         x = self.blocks(x)
         x = torch.sigmoid(x)
+        x = x.view(x.view(0), -1).mean(axis=1, keepdim=True)
         return x
 
     def forward_raw(self, x):
         x = self.blocks(x)
         x = torch.sigmoid(x)
+        x = x.view(x.size(0), -1).mean(axis=1, keepdim=True)
         return x
 
     def criterion_ls(self, *x, label: int):
