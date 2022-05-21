@@ -143,16 +143,14 @@ class Trainer():
     self.d_optimizer_line.zero_grad()
 
     if self.use_gp_loss_line:
-      ratio = torch.FloatTensor(self.batch_size, 1, 1, 1).uniform_(0, 1).cuda()
+      d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
+      d_loss_line_fake = self.discriminator_line.criterion_ls(line, generated_image, label=0)
+
+      ratio = torch.rand(1).cuda()
       interpolated_image = ratio * color + (1 - ratio) * generated_image
       dis_input_fake = torch.cat([line, interpolated_image], axis=1).requires_grad_(True)
-
-      d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
-
       d_fake = self.discriminator_line.forward_raw(dis_input_fake)
       gradient_penalty_line = self.calc_gradient_penalty(d_fake, dis_input_fake)
-
-      d_loss_line_fake = self.discriminator_line._criterion_ls(d_fake, label=0)
       
       d_loss_line = d_loss_line_real + d_loss_line_fake + self.gp_lambda_line * gradient_penalty_line
     
@@ -177,16 +175,13 @@ class Trainer():
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
     if self.use_gp_loss_color:
-      # https://github.com/AlexiaJM/MaximumMarginGANs/blob/master/Code/GAN.py#L924
-      ratio = torch.FloatTensor(self.batch_size, 1, 1, 1).uniform_(0, 1).cuda()
-      interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
-
       d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
+      d_loss_color_fake = self.discriminator_color.criterion_ls(generated_image, label=0)
 
+      ratio = torch.rand(1).cuda()
+      interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
       d_fake = self.discriminator_color(interpolated_image)
       gradient_penalty_color = self.calc_gradient_penalty(d_fake, interpolated_image)
-
-      d_loss_color_fake = self.discriminator_color._criterion_ls(d_fake, label=0)
       
       d_loss_color = d_loss_color_real + d_loss_color_fake + self.gp_lambda_color * gradient_penalty_color
     
