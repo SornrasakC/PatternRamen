@@ -142,10 +142,10 @@ class Trainer():
   def optimize_d_line(self, line, color, generated_image):
     self.d_optimizer_line.zero_grad()
 
-    if self.use_gp_loss_line:
-      d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
-      d_loss_line_fake = self.discriminator_line.criterion_ls(line, generated_image, label=0)
+    d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
+    d_loss_line_fake = self.discriminator_line.criterion_ls(line, generated_image, label=0)
 
+    if self.use_gp_loss_line:
       ratio = torch.rand(1).cuda()
       interpolated_image = ratio * color + (1 - ratio) * generated_image
       dis_input_fake = torch.cat([line, interpolated_image], axis=1).requires_grad_(True)
@@ -155,8 +155,6 @@ class Trainer():
       d_loss_line = d_loss_line_real + d_loss_line_fake + self.gp_lambda_line * gradient_penalty_line
     
     if not self.use_gp_loss_line:
-      d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
-      d_loss_line_fake = self.discriminator_line.criterion_ls(line, generated_image, label=0)
       d_loss_line = d_loss_line_real + d_loss_line_fake
 
     d_loss_line.backward()
@@ -174,10 +172,10 @@ class Trainer():
       color = self.instance_noise.add_noise(color, current_step, total_step)
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
+    d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
+    d_loss_color_fake = self.discriminator_color.criterion_ls(generated_image, label=0)
+    
     if self.use_gp_loss_color:
-      d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
-      d_loss_color_fake = self.discriminator_color.criterion_ls(generated_image, label=0)
-
       ratio = torch.rand(1).cuda()
       interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
       d_fake = self.discriminator_color(interpolated_image)
@@ -186,8 +184,6 @@ class Trainer():
       d_loss_color = d_loss_color_real + d_loss_color_fake + self.gp_lambda_color * gradient_penalty_color
     
     if not self.use_gp_loss_color:
-      d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
-      d_loss_color_fake = self.discriminator_color.criterion_ls(generated_image, label=0)
       d_loss_color = d_loss_color_real + d_loss_color_fake
 
     d_loss_color.backward()
@@ -202,7 +198,8 @@ class Trainer():
                         create_graph=True, retain_graph=True)[0]
     gradients = gradients.view(self.batch_size, -1)
     
-    gradients_norm = torch.sqrt( torch.sum(gradients ** 2, dim=1) + 1e-12 )
+    # gradients_norm = torch.sqrt( torch.sum(gradients ** 2, dim=1) + 1e-12 )
+    gradients_norm = (gradients + 1e-16).norm(2, dim=1)
     gradient_penalty = torch.mean( (gradients_norm - 1) ** 2 )
 
     return gradient_penalty
