@@ -156,6 +156,7 @@ class Trainer():
     
     if not self.use_gp_loss_line:
       d_loss_line = d_loss_line_real + d_loss_line_fake
+      gradient_penalty_line = None
 
     d_loss_line.backward()
     self.d_optimizer_line.step()
@@ -185,6 +186,7 @@ class Trainer():
     
     if not self.use_gp_loss_color:
       d_loss_color = d_loss_color_real + d_loss_color_fake
+      gradient_penalty_color = None
 
     d_loss_color.backward()
     self.d_optimizer_color.step()
