@@ -3,13 +3,14 @@ from src.block import DiscriminatorBlock, GeneratorEncoderBlock, SPADEResBlock
 import torch
 
 class Discriminator(nn.Module):
-    def __init__(self, input_num=2):
+    def __init__(self, input_num=2, with_encoder_first_layer_norm=True):
         super().__init__()
+        with_norm = with_encoder_first_layer_norm
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
 
         self.input_num = input_num
         self.blocks = nn.Sequential(
-            DiscriminatorBlock(3 * input_num, 64, **dis_block_options),
+            DiscriminatorBlock(3 * input_num, 64, **dis_block_options, with_norm=with_norm),
             DiscriminatorBlock(64, 128, **dis_block_options),
             DiscriminatorBlock(128, 256, **dis_block_options),
             DiscriminatorBlock(256, 512, **dis_block_options),
@@ -63,13 +64,14 @@ class LSGANLoss(nn.Module):
         return loss
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, with_encoder_first_layer_norm):
         super().__init__()
+        with_norm = with_encoder_first_layer_norm
         gen_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
 
         self.sketch_encoder_blocks = nn.ModuleList(
             [
-                GeneratorEncoderBlock(3, 64, **gen_block_options),
+                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=with_norm),
                 GeneratorEncoderBlock(64, 128, **gen_block_options),
                 GeneratorEncoderBlock(128, 256, **gen_block_options),
                 GeneratorEncoderBlock(256, 512, **gen_block_options),
@@ -80,7 +82,7 @@ class Generator(nn.Module):
 
         self.reference_encoder_blocks = nn.ModuleList(
             [
-                GeneratorEncoderBlock(3, 64, **gen_block_options),
+                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=with_norm),
                 GeneratorEncoderBlock(64, 128, **gen_block_options),
                 GeneratorEncoderBlock(128, 256, **gen_block_options),
                 GeneratorEncoderBlock(256, 512, **gen_block_options),

@@ -6,10 +6,10 @@ import torch.nn.utils.spectral_norm as spectral_norm
 from src.normalization import SPADE
 
 class DiscriminatorBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, with_norm=True):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
-        self.norm = nn.InstanceNorm2d(out_channels)
+        self.norm = nn.InstanceNorm2d(out_channels) if with_norm else nn.Identity()
         self.leaky_relu = nn.LeakyReLU(0.2)
 
     def forward(self, x):
@@ -20,10 +20,10 @@ class DiscriminatorBlock(nn.Module):
 
 
 class GeneratorEncoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, with_norm=True):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
-        self.norm = nn.InstanceNorm2d(out_channels)
+        self.norm = nn.InstanceNorm2d(out_channels) if with_norm else nn.Identity()
         self.leaky_relu = nn.LeakyReLU(0.2)
 
     def forward(self, x):
