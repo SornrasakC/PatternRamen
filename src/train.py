@@ -13,6 +13,7 @@ import torchvision
 import numpy as np
 from tqdm import tqdm
 import os
+from PIL import Image
 
 
 class Trainer():
@@ -271,6 +272,26 @@ class Trainer():
             return pic_rows[:self.inference_size]
     # Shouldn't reach here
     return pic_rows[:self.inference_size]
+
+  def test_gen(self, save_path):
+    self.generator.eval()
+
+    opt = {'batch_size': self.inference_size, 'use_xdog': False, 'disable_random_line': True, 'is_validate': True}
+    it_test = iter(gen_data_loader(self.data_path_val, shuffle=False, **opt))
+
+    with torch.no_grad():
+      for _it in len(it_test):
+        line, color, _, noise = next(it_test)
+        line = line.cuda().to(dtype=torch.float32)
+        color = color.cuda().to(dtype=torch.float32)
+        noise = noise.cuda().to(dtype=torch.float32)
+        generated_images = self.generator(line, color, noise)
+        generated_images = util.denorm_image(generated_images)
+
+        generated_images = Image.fromarray(generated_images)
+        file_path = os.path.join(save_path, f'{_it:04}.png')
+        generated_images.save(file_path)
+
 
   def save_checkpoint(self, iteration=..., filepath=...):
     if iteration is ...:
