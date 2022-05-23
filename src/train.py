@@ -156,12 +156,12 @@ class Trainer():
     
     if not self.use_gp_loss_line:
       d_loss_line = d_loss_line_real + d_loss_line_fake
-      gradient_penalty_line = None
+      gradient_penalty_line = False
 
     d_loss_line.backward()
     self.d_optimizer_line.step()
 
-    rets = [d_loss_line, d_loss_line_real, d_loss_line_fake, gradient_penalty_line]
+    rets = filter(None, [d_loss_line, d_loss_line_real, d_loss_line_fake, gradient_penalty_line])
     return util.pack_d_loss_line(*map(lambda x: x.item(), rets))
 
   def optimize_d_color(self, color, generated_image):
@@ -186,12 +186,12 @@ class Trainer():
     
     if not self.use_gp_loss_color:
       d_loss_color = d_loss_color_real + d_loss_color_fake
-      gradient_penalty_color = None
+      gradient_penalty_color = False
 
     d_loss_color.backward()
     self.d_optimizer_color.step()
 
-    rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty_color]
+    rets = filter(None, [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty_color])
     return util.pack_d_loss_color(*map(lambda x: x.item(), rets))
 
   def calc_gradient_penalty(self, d_fake, interpolated_image):
