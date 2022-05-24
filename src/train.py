@@ -67,7 +67,7 @@ class Trainer():
 
     self.load_checkpoint(checkpoint_path)
 
-    self.with_encoder_first_layer_norm = with_encoder_first_layer_norm
+    # self.with_encoder_first_layer_norm = with_encoder_first_layer_norm
     self.gan_loss_type = gan_loss_type
     self.rgan_mode = rgan_mode
     # self.use_vgg_cache = use_vgg_cache
