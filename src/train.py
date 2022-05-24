@@ -129,7 +129,7 @@ class Trainer():
           'p_loss_weight': self.p_loss_weight,
           'n_critics_line': self.n_critics_line,
           'n_critics_color': self.n_critics_color
-        }, iteration, commit=False)
+        }, _it, commit=False)
       
       pass
     self.logger.finish()
