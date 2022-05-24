@@ -1,4 +1,5 @@
 import torch
+from torch.nn import functional as F
 from torch.autograd import grad as torch_grad
 import matplotlib.pyplot as plt
 import os
@@ -96,6 +97,11 @@ def calc_gradient_penalty(d_fake, interpolated_image):
     gradient_penalty = torch.mean( (gradients_norm - 1) ** 2 )
 
     return gradient_penalty
+
+def multi_scale_downsample(input_image):
+    return F.avg_pool2d(input_image, kernel_size=3,
+                        stride=2, padding=[1, 1],
+                        count_include_pad=False)
 
 def pack_d_loss(
         d_loss, pack_d_loss_line, pack_d_loss_color

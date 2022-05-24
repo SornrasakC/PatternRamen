@@ -4,14 +4,14 @@ import torch
 import src.util as util
 
 class Discriminator(nn.Module):
-    def __init__(self, input_num=2, with_encoder_first_layer_norm=True, gan_loss_type='lsgan', rgan_mode=False):
+    def __init__(self, input_num=1, gan_loss_type='lsgan', rgan_mode=False):
         super().__init__()
-        with_norm = with_encoder_first_layer_norm
+        # with_norm = with_encoder_first_layer_norm
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
 
         self.input_num = input_num
         self.blocks = nn.Sequential(
-            DiscriminatorBlock(3 * input_num, 64, **dis_block_options, with_norm=with_norm),
+            DiscriminatorBlock(3 * input_num, 64, **dis_block_options, with_norm=False, spec_norm=False),
             DiscriminatorBlock(64, 128, **dis_block_options),
             DiscriminatorBlock(128, 256, **dis_block_options),
             DiscriminatorBlock(256, 512, **dis_block_options),
@@ -106,6 +106,7 @@ class GANLoss(nn.Module):
         target_tensor = self.get_target_tensor(prediction, target_is_real)
         loss = self.loss(prediction, target_tensor)
         return loss
+
 
 class Generator(nn.Module):
     def __init__(self, with_encoder_first_layer_norm):

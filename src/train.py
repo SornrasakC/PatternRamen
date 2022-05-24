@@ -24,12 +24,12 @@ class Trainer():
       add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1, 
       use_gp_loss_color=True, gp_lambda_color=10, 
       use_gp_loss_line=True, gp_lambda_line=10, 
-      with_encoder_first_layer_norm=True, gan_loss_type='lsgan',
+      gan_loss_type='lsgan',
       use_vgg_cache=False, rgan_mode=False,
     ):
-    self.discriminator_line = Discriminator(input_num=2, with_encoder_first_layer_norm=with_encoder_first_layer_norm, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode)
-    self.discriminator_color = Discriminator(input_num=1, with_encoder_first_layer_norm=with_encoder_first_layer_norm, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode)
-    self.generator = Generator(with_encoder_first_layer_norm=with_encoder_first_layer_norm)
+    self.discriminator_line = Discriminator(input_num=1, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode)
+    self.discriminator_color = Discriminator(input_num=1, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode)
+    self.generator = Generator()
     self.vgg16 = torchvision.models.vgg16(pretrained=True).features[:25]
     self.vgg16.cuda()
     self.vgg16.eval()
@@ -108,7 +108,7 @@ class Trainer():
       generated_image = self.generator(line, transform_color, noise)
       self.time_logger.check('Generator forward')
       
-      pack_d_loss = self.optimize_d(line, color, generated_image)
+      pack_d_loss = self.optimize_d(color, generated_image)
       pack_g_loss = self.optimize_g(line, color, transform_color, noise, generated_image)
       
       pack_lr = util.pack_learning_rate(self.g_lr, self.d_line_lr, self.d_color_lr)
@@ -136,25 +136,28 @@ class Trainer():
     self.iteration += iterations
     self.save_checkpoint()
 
-  def optimize_d(self, line, color, generated_image):
+  def optimize_d(self, color, generated_image):
     generated_image = generated_image.detach()
 
+    color_2 = util.multi_scale_downsample(color)
+    generated_image_2 = util.multi_scale_downsample(generated_image)
+
     for _ in range(self.n_critics_line):
-      pack_d_loss_line = self.optimize_d_line(line, color, generated_image)
+      pack_d_loss_line = self.optimize_d_line(color, generated_image)
     self.time_logger.check(f'D Line Optimized n: {self.n_critics_line}')
 
     for _ in range(self.n_critics_color):
-      pack_d_loss_color = self.optimize_d_color(color, generated_image)
+      pack_d_loss_color = self.optimize_d_color(color_2, generated_image_2)
     self.time_logger.check(f'D Color Optimized n: {self.n_critics_color}')
     
     d_loss = pack_d_loss_line['d_loss_line'] + pack_d_loss_color['d_loss_color']
 
     return util.pack_d_loss(d_loss, pack_d_loss_line, pack_d_loss_color)
   
-  def optimize_d_line(self, line, color, generated_image):
+  def optimize_d_line(self, color, generated_image):
     self.d_optimizer_line.zero_grad()
 
-    crit_res = self.discriminator_line.criticise(color, generated_image, line, with_gp=self.use_gp_loss_line)
+    crit_res = self.discriminator_line.criticise(color, generated_image, with_gp=self.use_gp_loss_line)
     d_loss_line_real, d_loss_line_fake, gradient_penalty_line = crit_res
       
     d_loss_line = d_loss_line_real + d_loss_line_fake + self.gp_lambda_line * gradient_penalty_line
@@ -191,10 +194,13 @@ class Trainer():
     # if self.use_vgg_cache:
     #   TODO cache "self.vgg16(color)" - random batch problem?
 
+    color_2 = util.multi_scale_downsample(color)
+    generated_image_2 = util.multi_scale_downsample(generated_image)
+
     p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
 
     _, g_loss_line, _ = self.discriminator_line.criticise(color, generated_image, line, only_fake=True)
-    _, g_loss_color, _ = self.discriminator_color.criticise(color, generated_image, only_fake=True)
+    _, g_loss_color, _ = self.discriminator_color.criticise(color_2, generated_image_2, only_fake=True)
 
     g_loss = g_loss_line + g_loss_color + self.p_loss_weight * p_loss
     self.time_logger.check('G Loss Calculation')
