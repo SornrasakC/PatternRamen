@@ -285,7 +285,7 @@ class Trainer():
         color = color.cuda().to(dtype=torch.float32)
         noise = noise.cuda().to(dtype=torch.float32)
         generated_images = self.generator(line, color, noise)
-        generated_images = util.denorm_image(generated_images)
+        generated_images = util.denorm_image(generated_images).numpy()
 
         generated_images = Image.fromarray(generated_images)
         file_path = os.path.join(save_path, f'{_it:04}.png')
