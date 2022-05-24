@@ -291,7 +291,7 @@ class Trainer():
           generated_image = Image.fromarray(generated_image).convert('RGB')
           file_index = _it * opt['batch_size'] + batch_idx
           file_path = os.path.join(save_path, f'{file_index:04}.png')
-        generated_images.save(file_path)
+          generated_image.save(file_path)
 
     self.generator.train()
 
