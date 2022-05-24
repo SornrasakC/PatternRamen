@@ -3,7 +3,7 @@ from src.block import DiscriminatorBlock, GeneratorEncoderBlock, SPADEResBlock
 import torch
 
 class Discriminator(nn.Module):
-    def __init__(self, input_num=2, with_encoder_first_layer_norm=True):
+    def __init__(self, input_num=2, with_encoder_first_layer_norm=True, gan_loss_type='lsgan'):
         super().__init__()
         with_norm = with_encoder_first_layer_norm
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
@@ -17,7 +17,8 @@ class Discriminator(nn.Module):
             nn.Conv2d(512, 1, 4, 1, 1),
         )
 
-        self.loss = LSGANLoss()
+        self.loss = GANLoss(gan_loss_type=gan_loss_type)
+        self.gan_loss_type = gan_loss_type
 
     def forward(self, *x):
         x = torch.cat(x, dim=1)
@@ -28,28 +29,37 @@ class Discriminator(nn.Module):
         x = self.blocks(x)
         return x
 
-    def criterion_ls(self, *x, label: int):
+    def criterion(self, *x, label: int):
         assert len(x) == self.input_num
+
         pred = self(*x)
-        return self._criterion_ls(pred, label)
+        return self._criterion(pred, label)
     
-    def _criterion_ls(self, pred, label: int):
-        # if label == 1:
-        #     sign = 1
-        # if label == 0:
-        #     sign = -1
-        
-        return self.loss(pred, bool(label)) / 2
+    def _criterion(self, pred, label: int):
+        if self.gan_loss_type == 'lsgan':
+            return self.loss( pred, bool(label) ) / 2
 
-        # return torch.mean(  (1 - sign * pred)**2 ) / 2
+        if self.gan_loss_type == 'wgan-gp':
+            return ( 1 if bool(label) else -1 ) * pred.mean()
 
-class LSGANLoss(nn.Module):
+        if self.gan_loss_type == 'sgan':
+            return self.loss( pred, bool(label) )
+
+class GANLoss(nn.Module):
     # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py#L209
-    def __init__(self, target_real_label=1.0, target_fake_label=0.0):
-        super(LSGANLoss, self).__init__()
+    def __init__(self, gan_loss_type='lsgan', target_real_label=1.0, target_fake_label=0.0):
+        super(GANLoss, self).__init__()
         self.register_buffer('real_label', torch.tensor(target_real_label))
         self.register_buffer('fake_label', torch.tensor(target_fake_label))
-        self.loss = nn.MSELoss()
+
+        if gan_loss_type == 'lsgan':
+            self.loss = nn.MSELoss()
+        elif gan_loss_type == 'wgan-gp':
+            self.loss = None
+        elif gan_loss_type == 'sgan':
+            self.loss = nn.BCEWithLogitsLoss()
+        else:
+            raise NotImplementedError(f'gan_loss_type: {gan_loss_type}')
 
     def get_target_tensor(self, prediction, target_is_real):
         if target_is_real:

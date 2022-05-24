@@ -22,14 +22,13 @@ class Trainer():
       data_path_train=None, data_path_val=None, batch_size=16, 
       g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4, inference_size=3,
       add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1, 
-      use_gp_loss_color=True, gp_lambda_color=150, 
-      use_gp_loss_line=True, gp_lambda_line=150, 
-      with_encoder_first_layer_norm=True
+      use_gp_loss_color=True, gp_lambda_color=10, 
+      use_gp_loss_line=True, gp_lambda_line=10, 
+      with_encoder_first_layer_norm=True, gan_loss_type='lsgan',
+      use_vgg_cache=False,
     ):
-    self.with_encoder_first_layer_norm = with_encoder_first_layer_norm
-
-    self.discriminator_line = Discriminator(input_num=2, with_encoder_first_layer_norm=with_encoder_first_layer_norm)
-    self.discriminator_color = Discriminator(input_num=1, with_encoder_first_layer_norm=with_encoder_first_layer_norm)
+    self.discriminator_line = Discriminator(input_num=2, with_encoder_first_layer_norm=with_encoder_first_layer_norm, gan_loss_type=gan_loss_type)
+    self.discriminator_color = Discriminator(input_num=1, with_encoder_first_layer_norm=with_encoder_first_layer_norm, gan_loss_type=gan_loss_type)
     self.generator = Generator(with_encoder_first_layer_norm=with_encoder_first_layer_norm)
     self.vgg16 = torchvision.models.vgg16(pretrained=True).features[:25]
     self.vgg16.cuda()
@@ -67,6 +66,10 @@ class Trainer():
     self.instance_noise = InstanceNoise()
 
     self.load_checkpoint(checkpoint_path)
+
+    self.with_encoder_first_layer_norm = with_encoder_first_layer_norm
+    self.gan_loss_type = gan_loss_type
+    # self.use_vgg_cache = use_vgg_cache
         
   def init_optimizers(self, g_lr, d_line_lr, d_color_lr):
     print(f'Starting Optims g_lr: {g_lr:.0e}, d_line_lr: {d_line_lr:.0e}, d_color_lr: {d_color_lr:.0e}')
@@ -120,6 +123,12 @@ class Trainer():
 
         self.evaluate(iteration=_it, total_it=total_it)
         self.time_logger.check('Evaluation')
+
+        self.logger.log_etc({
+          'p_loss_weight': self.p_loss_weight,
+          'n_critics_line': self.n_critics_line,
+          'n_critics_color': self.n_critics_color
+        }, iteration, commit=False)
       
       pass
     self.logger.finish()
@@ -144,8 +153,8 @@ class Trainer():
   def optimize_d_line(self, line, color, generated_image):
     self.d_optimizer_line.zero_grad()
 
-    d_loss_line_real = self.discriminator_line.criterion_ls(line, color, label=1)
-    d_loss_line_fake = self.discriminator_line.criterion_ls(line, generated_image, label=0)
+    d_loss_line_real = self.discriminator_line.criterion(line, color, label=1)
+    d_loss_line_fake = self.discriminator_line.criterion(line, generated_image, label=0)
 
     if self.use_gp_loss_line:
       ratio = torch.rand(1).cuda()
@@ -175,8 +184,8 @@ class Trainer():
       color = self.instance_noise.add_noise(color, current_step, total_step)
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
-    d_loss_color_real = self.discriminator_color.criterion_ls(color, label=1)
-    d_loss_color_fake = self.discriminator_color.criterion_ls(generated_image, label=0)
+    d_loss_color_real = self.discriminator_color.criterion(color, label=1)
+    d_loss_color_fake = self.discriminator_color.criterion(generated_image, label=0)
     
     if self.use_gp_loss_color:
       ratio = torch.rand(1).cuda()
@@ -211,10 +220,13 @@ class Trainer():
   def optimize_g(self, line, color, transform_color, noise, generated_image):
     self.g_optimizer.zero_grad()
 
+    # if self.use_vgg_cache:
+    #   TODO cache "self.vgg16(color)" - random batch problem?
+
     p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
 
-    g_loss_line = self.discriminator_line.criterion_ls(line, generated_image, label=1)
-    g_loss_color = self.discriminator_color.criterion_ls(generated_image, label=1)
+    g_loss_line = self.discriminator_line.criterion(line, generated_image, label=1)
+    g_loss_color = self.discriminator_color.criterion(generated_image, label=1)
 
     g_loss = g_loss_line + g_loss_color + self.p_loss_weight * p_loss
     self.time_logger.check('G Loss Calculation')
