@@ -285,10 +285,12 @@ class Trainer():
         color = color.cuda().to(dtype=torch.float32)
         noise = noise.cuda().to(dtype=torch.float32)
         generated_images = self.generator(line, color, noise)
-        generated_images = util.denorm_image(generated_images).numpy()
 
-        generated_images = Image.fromarray(generated_images)
-        file_path = os.path.join(save_path, f'{_it:04}.png')
+        for batch_idx, generated_image in enumerate(generated_images):
+          generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
+          generated_image = Image.fromarray(generated_image)
+          file_index = _it * opt['batch_size'] + batch_idx
+          file_path = os.path.join(save_path, f'{file_index:04}.png')
         generated_images.save(file_path)
 
     self.generator.train()
