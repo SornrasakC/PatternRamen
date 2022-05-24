@@ -288,7 +288,7 @@ class Trainer():
 
         for batch_idx, generated_image in enumerate(generated_images):
           generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
-          generated_image = Image.fromarray(generated_image)
+          generated_image = Image.fromarray(generated_image).convert('RGB')
           file_index = _it * opt['batch_size'] + batch_idx
           file_path = os.path.join(save_path, f'{file_index:04}.png')
         generated_images.save(file_path)
