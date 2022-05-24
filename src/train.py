@@ -11,7 +11,7 @@ from torch.autograd import grad as torch_grad
 import torchvision
 
 import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm, trange
 import os
 from PIL import Image
 
@@ -312,7 +312,7 @@ class Trainer():
     it_test = iter(gen_data_loader(self.data_path_val, shuffle=False, **opt))
 
     with torch.no_grad():
-      for _it in len(it_test):
+      for _it in trange(len(it_test)):
         line, color, _, noise = next(it_test)
         line = line.cuda().to(dtype=torch.float32)
         color = color.cuda().to(dtype=torch.float32)
