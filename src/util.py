@@ -1,8 +1,8 @@
 import torch
+from torch.autograd import grad as torch_grad
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
-
 
 def show_image(img):
     imgplot = plt.imshow(img)
@@ -85,6 +85,17 @@ def lock_batch(image_batch, idx=0):
         image_batch[i] = image_batch[idx]
     return image_batch
 
+def calc_gradient_penalty(d_fake, interpolated_image):
+    gradients = torch_grad(outputs=d_fake, inputs=interpolated_image,
+                        grad_outputs=torch.ones(d_fake.size()).cuda(),
+                        create_graph=True, retain_graph=True)[0]
+    gradients = gradients.view(d_fake.size(0), -1)
+
+    # gradients_norm = torch.sqrt( torch.sum(gradients ** 2, dim=1) + 1e-12 )
+    gradients_norm = (gradients + 1e-16).norm(2, dim=1)
+    gradient_penalty = torch.mean( (gradients_norm - 1) ** 2 )
+
+    return gradient_penalty
 
 def pack_d_loss(
         d_loss, pack_d_loss_line, pack_d_loss_color
