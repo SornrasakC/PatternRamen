@@ -324,6 +324,7 @@ class Trainer():
         file_path = os.path.join(save_path, f'{_it:04}.png')
         generated_images.save(file_path)
 
+    self.generator.train()
 
   def save_checkpoint(self, iteration=..., filepath=...):
     if iteration is ...:
