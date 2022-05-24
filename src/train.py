@@ -199,7 +199,7 @@ class Trainer():
 
     p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
 
-    _, g_loss_line, _ = self.discriminator_line.criticise(color, generated_image, line, only_fake=True)
+    _, g_loss_line, _ = self.discriminator_line.criticise(color, generated_image, only_fake=True)
     _, g_loss_color, _ = self.discriminator_color.criticise(color_2, generated_image_2, only_fake=True)
 
     g_loss = g_loss_line + g_loss_color + self.p_loss_weight * p_loss
