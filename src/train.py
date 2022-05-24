@@ -22,12 +22,15 @@ class Trainer():
       checkpoint_path=None, checkpoint_folder_parent=None, checkpoint_interval=100,
       data_path_train=None, data_path_val=None, batch_size=16, 
       g_lr=1e-4, d_line_lr=4e-4, d_color_lr=1e-4, inference_size=3,
-      add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1, use_gp_loss=True,
+      add_noise=False, n_critics_line=1, n_critics_color=1, p_loss_weight=1, 
+      use_gp_loss_color=True, gp_lambda_color=10, 
+      use_gp_loss_line=True, gp_lambda_line=10, 
+      with_encoder_first_layer_norm=True, gan_loss_type='lsgan',
+      use_vgg_cache=False,
     ):
-
-    self.discriminator_line = Discriminator(input_num=2)
-    self.discriminator_color = Discriminator(input_num=1)
-    self.generator = Generator()
+    self.discriminator_line = Discriminator(input_num=2, with_encoder_first_layer_norm=with_encoder_first_layer_norm, gan_loss_type=gan_loss_type)
+    self.discriminator_color = Discriminator(input_num=1, with_encoder_first_layer_norm=with_encoder_first_layer_norm, gan_loss_type=gan_loss_type)
+    self.generator = Generator(with_encoder_first_layer_norm=with_encoder_first_layer_norm)
     self.vgg16 = torchvision.models.vgg16(pretrained=True).features[:25]
     self.vgg16.cuda()
     self.vgg16.eval()
@@ -36,9 +39,14 @@ class Trainer():
     self.generator.cuda()
     self.perceptual_criterion = nn.L1Loss()
     self.p_loss_weight = p_loss_weight
+
     self.n_critics_line = n_critics_line
     self.n_critics_color = n_critics_color
-    self.use_gp_loss = use_gp_loss
+
+    self.use_gp_loss_color = use_gp_loss_color
+    self.gp_lambda_color = gp_lambda_color
+    self.use_gp_loss_line = use_gp_loss_line
+    self.gp_lambda_line = gp_lambda_line
 
     self.g_lr, self.d_line_lr, self.d_color_lr = g_lr, d_line_lr, d_color_lr
     self.init_optimizers(g_lr, d_line_lr, d_color_lr)
@@ -57,9 +65,12 @@ class Trainer():
 
     self.add_noise = add_noise
     self.instance_noise = InstanceNoise()
-    self.etc_loader_it = iter(gen_etc_loader(batch_size=batch_size))
 
     self.load_checkpoint(checkpoint_path)
+
+    self.with_encoder_first_layer_norm = with_encoder_first_layer_norm
+    self.gan_loss_type = gan_loss_type
+    # self.use_vgg_cache = use_vgg_cache
         
   def init_optimizers(self, g_lr, d_line_lr, d_color_lr):
     print(f'Starting Optims g_lr: {g_lr:.0e}, d_line_lr: {d_line_lr:.0e}, d_color_lr: {d_color_lr:.0e}')
@@ -113,9 +124,13 @@ class Trainer():
 
         self.evaluate(iteration=_it, total_it=total_it)
         self.time_logger.check('Evaluation')
+
+        self.logger.log_etc({
+          'p_loss_weight': self.p_loss_weight,
+          'n_critics_line': self.n_critics_line,
+          'n_critics_color': self.n_critics_color
+        }, iteration, commit=False)
       
-
-
       pass
     self.logger.finish()
     self.iteration += iterations
@@ -141,12 +156,24 @@ class Trainer():
 
     d_loss_line_real = self.discriminator_line.criterion(line, color, label=1)
     d_loss_line_fake = self.discriminator_line.criterion(line, generated_image, label=0)
-    d_loss_line = (d_loss_line_real + d_loss_line_fake) / 2
+
+    if self.use_gp_loss_line:
+      ratio = torch.rand(1).cuda()
+      interpolated_image = ratio * color + (1 - ratio) * generated_image
+      dis_input_fake = torch.cat([line, interpolated_image], axis=1).requires_grad_(True)
+      d_fake = self.discriminator_line.forward_raw(dis_input_fake)
+      gradient_penalty_line = self.calc_gradient_penalty(d_fake, dis_input_fake)
+      
+      d_loss_line = d_loss_line_real + d_loss_line_fake + self.gp_lambda_line * gradient_penalty_line
+    
+    if not self.use_gp_loss_line:
+      d_loss_line = d_loss_line_real + d_loss_line_fake
+      gradient_penalty_line = False
 
     d_loss_line.backward()
     self.d_optimizer_line.step()
 
-    rets = [d_loss_line, d_loss_line_real, d_loss_line_fake]
+    rets = filter(None, [d_loss_line, d_loss_line_real, d_loss_line_fake, gradient_penalty_line])
     return util.pack_d_loss_line(*map(lambda x: x.item(), rets))
 
   def optimize_d_color(self, color, generated_image):
@@ -158,39 +185,44 @@ class Trainer():
       color = self.instance_noise.add_noise(color, current_step, total_step)
       generated_image = self.instance_noise.add_noise(generated_image, current_step, total_step)
 
-    if self.use_gp_loss:
-      d_loss_color_real = self.discriminator_color(color).mean()
-      d_loss_color_fake, gradient_penalty = self.calc_d_loss_gp(color, generated_image)
-      d_loss_color = d_loss_color_fake - d_loss_color_real + gradient_penalty
-      d_loss_color.backward()
+    d_loss_color_real = self.discriminator_color.criterion(color, label=1)
+    d_loss_color_fake = self.discriminator_color.criterion(generated_image, label=0)
     
-    if not self.use_gp_loss:
-      d_loss_color_real = self.discriminator_color.criterion(color, label=1)
-      d_loss_color_fake = self.discriminator_color.criterion(generated_image, label=0)
-      d_loss_color = (d_loss_color_real + d_loss_color_fake) / 2
-      d_loss_color.backward()
+    if self.use_gp_loss_color:
+      ratio = torch.rand(1).cuda()
+      interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
+      d_fake = self.discriminator_color(interpolated_image)
+      gradient_penalty_color = self.calc_gradient_penalty(d_fake, interpolated_image)
+      
+      d_loss_color = d_loss_color_real + d_loss_color_fake + self.gp_lambda_color * gradient_penalty_color
+    
+    if not self.use_gp_loss_color:
+      d_loss_color = d_loss_color_real + d_loss_color_fake
+      gradient_penalty_color = False
 
+    d_loss_color.backward()
     self.d_optimizer_color.step()
 
-    rets = [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty]
+    rets = filter(None, [d_loss_color, d_loss_color_real, d_loss_color_fake, gradient_penalty_color])
     return util.pack_d_loss_color(*map(lambda x: x.item(), rets))
 
-  def calc_d_loss_gp(self, color, generated_image):
-    ratio = next(self.etc_loader_it).cuda()
-    interpolated_image = (ratio * color + (1 - ratio) * generated_image).requires_grad_(True)
-    d_fake = self.discriminator_color(interpolated_image)
-
+  def calc_gradient_penalty(self, d_fake, interpolated_image):
     gradients = torch_grad(outputs=d_fake, inputs=interpolated_image,
                         grad_outputs=torch.ones(d_fake.size()).cuda(),
                         create_graph=True, retain_graph=True)[0]
     gradients = gradients.view(self.batch_size, -1)
-    gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-    GP_lambda = 10
-    gradient_penalty = GP_lambda * ((gradients_norm - 1) ** 2).mean()
-    return d_fake.mean(), gradient_penalty
+    
+    # gradients_norm = torch.sqrt( torch.sum(gradients ** 2, dim=1) + 1e-12 )
+    gradients_norm = (gradients + 1e-16).norm(2, dim=1)
+    gradient_penalty = torch.mean( (gradients_norm - 1) ** 2 )
+
+    return gradient_penalty
 
   def optimize_g(self, line, color, transform_color, noise, generated_image):
     self.g_optimizer.zero_grad()
+
+    # if self.use_vgg_cache:
+    #   TODO cache "self.vgg16(color)" - random batch problem?
 
     p_loss = torch.mean(self.perceptual_criterion(self.vgg16(color), self.vgg16(generated_image)))
 

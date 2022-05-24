@@ -3,40 +3,85 @@ from src.block import DiscriminatorBlock, GeneratorEncoderBlock, SPADEResBlock
 import torch
 
 class Discriminator(nn.Module):
-    def __init__(self, input_num=2):
+    def __init__(self, input_num=2, with_encoder_first_layer_norm=True, gan_loss_type='lsgan'):
         super().__init__()
+        with_norm = with_encoder_first_layer_norm
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
 
         self.input_num = input_num
         self.blocks = nn.Sequential(
-            DiscriminatorBlock(3 * input_num, 64, **dis_block_options),
+            DiscriminatorBlock(3 * input_num, 64, **dis_block_options, with_norm=with_norm),
             DiscriminatorBlock(64, 128, **dis_block_options),
             DiscriminatorBlock(128, 256, **dis_block_options),
             DiscriminatorBlock(256, 512, **dis_block_options),
             nn.Conv2d(512, 1, 4, 1, 1),
         )
 
+        self.loss = GANLoss(gan_loss_type=gan_loss_type)
+        self.gan_loss_type = gan_loss_type
+
     def forward(self, *x):
         x = torch.cat(x, dim=1)
         x = self.blocks(x)
-        x = torch.sigmoid(x)
+        return x
+
+    def forward_raw(self, x):
+        x = self.blocks(x)
         return x
 
     def criterion(self, *x, label: int):
         assert len(x) == self.input_num
+
         pred = self(*x)
-        return torch.mean(  (pred - label)**2 )
+        return self._criterion(pred, label)
+    
+    def _criterion(self, pred, label: int):
+        if self.gan_loss_type == 'lsgan':
+            return self.loss( pred, bool(label) ) / 2
 
+        if self.gan_loss_type == 'wgan-gp':
+            return ( 1 if bool(label) else -1 ) * pred.mean()
 
+        if self.gan_loss_type == 'sgan':
+            return self.loss( pred, bool(label) )
+
+class GANLoss(nn.Module):
+    # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py#L209
+    def __init__(self, gan_loss_type='lsgan', target_real_label=1.0, target_fake_label=0.0):
+        super(GANLoss, self).__init__()
+        self.register_buffer('real_label', torch.tensor(target_real_label))
+        self.register_buffer('fake_label', torch.tensor(target_fake_label))
+
+        if gan_loss_type == 'lsgan':
+            self.loss = nn.MSELoss()
+        elif gan_loss_type == 'wgan-gp':
+            self.loss = None
+        elif gan_loss_type == 'sgan':
+            self.loss = nn.BCEWithLogitsLoss()
+        else:
+            raise NotImplementedError(f'gan_loss_type: {gan_loss_type}')
+
+    def get_target_tensor(self, prediction, target_is_real):
+        if target_is_real:
+            target_tensor = self.real_label
+        else:
+            target_tensor = self.fake_label
+        return target_tensor.expand_as(prediction)
+
+    def __call__(self, prediction, target_is_real):
+        target_tensor = self.get_target_tensor(prediction, target_is_real)
+        loss = self.loss(prediction, target_tensor)
+        return loss
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, with_encoder_first_layer_norm):
         super().__init__()
+        with_norm = with_encoder_first_layer_norm
         gen_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
 
         self.sketch_encoder_blocks = nn.ModuleList(
             [
-                GeneratorEncoderBlock(3, 64, **gen_block_options),
+                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=with_norm),
                 GeneratorEncoderBlock(64, 128, **gen_block_options),
                 GeneratorEncoderBlock(128, 256, **gen_block_options),
                 GeneratorEncoderBlock(256, 512, **gen_block_options),
@@ -47,7 +92,7 @@ class Generator(nn.Module):
 
         self.reference_encoder_blocks = nn.ModuleList(
             [
-                GeneratorEncoderBlock(3, 64, **gen_block_options),
+                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=with_norm),
                 GeneratorEncoderBlock(64, 128, **gen_block_options),
                 GeneratorEncoderBlock(128, 256, **gen_block_options),
                 GeneratorEncoderBlock(256, 512, **gen_block_options),
