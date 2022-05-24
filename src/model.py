@@ -109,14 +109,14 @@ class GANLoss(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, with_encoder_first_layer_norm):
+    def __init__(self):
         super().__init__()
-        with_norm = with_encoder_first_layer_norm
+        # with_norm = with_encoder_first_layer_norm
         gen_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
 
         self.sketch_encoder_blocks = nn.ModuleList(
             [
-                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=with_norm),
+                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=False, spec_norm=False),
                 GeneratorEncoderBlock(64, 128, **gen_block_options),
                 GeneratorEncoderBlock(128, 256, **gen_block_options),
                 GeneratorEncoderBlock(256, 512, **gen_block_options),
@@ -127,7 +127,7 @@ class Generator(nn.Module):
 
         self.reference_encoder_blocks = nn.ModuleList(
             [
-                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=with_norm),
+                GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=False, spec_norm=False),
                 GeneratorEncoderBlock(64, 128, **gen_block_options),
                 GeneratorEncoderBlock(128, 256, **gen_block_options),
                 GeneratorEncoderBlock(256, 512, **gen_block_options),
