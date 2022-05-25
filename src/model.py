@@ -18,7 +18,8 @@ class Discriminator(nn.Module):
             nn.Conv2d(512, 1, 4, 1, 1),
         )
 
-        self.loss = GANLoss(gan_loss_type=gan_loss_type)
+        target_fake_label = -1.0 if self.rgan_mode in ['rgan', 'ragan'] else 0.0
+        self.loss = GANLoss(gan_loss_type=gan_loss_type, target_fake_label=target_fake_label)
         self.gan_loss_type = gan_loss_type
         self.rgan_mode = rgan_mode
         if rgan_mode not in [False, 'rgan', 'ragan']:
@@ -73,7 +74,7 @@ class Discriminator(nn.Module):
     
     def _criterion(self, pred, label: int):
         if self.gan_loss_type == 'lsgan':
-            return self.loss( pred, bool(label) ) / 2
+            return self.loss( pred, target_label ) / 2
 
         if self.gan_loss_type == 'wgan-gp':
             return ( 1 if bool(label) else -1 ) * pred.mean()
