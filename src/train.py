@@ -277,7 +277,7 @@ class Trainer():
     self,
     color_save_path='results/color/',
     gen_save_path='results/generated/',
-    fid_cal_batch_size=50,
+    batch_size=None,
     data_loader=None,
     force_inference=False,
   ):
@@ -295,8 +295,9 @@ class Trainer():
     else:
       self.generator.eval()
 
+      batch_size = self.inference_size if batch_size is None else batch_size
       opt = {
-        'batch_size': self.inference_size,
+        'batch_size': batch_size,
         'use_xdog': False,
         'disable_random_line': True,
         'is_validate': True
@@ -332,7 +333,7 @@ class Trainer():
 
     fid_score = calculate_fid_given_paths(
       paths=[color_file_path, gen_file_path],
-      batch_size=fid_cal_batch_size,
+      batch_size=batch_size,
       device=torch.device('cuda' if (torch.cuda.is_available()) else 'cpu'),
       dims=2048,
       num_workers=num_workers
