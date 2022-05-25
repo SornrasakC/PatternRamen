@@ -13,6 +13,7 @@ import numpy as np
 from tqdm import tqdm, trange
 import os
 from PIL import Image
+from pytorch_fid.fid_score import calculate_fid_given_paths
 
 
 class Trainer():
@@ -272,28 +273,72 @@ class Trainer():
     # Shouldn't reach here
     return pic_rows[:self.inference_size]
 
-  def test_gen(self, save_path):
-    self.generator.eval()
+  def calculate_fid(
+    self,
+    color_save_path='results/color/',
+    gen_save_path='results/generated/',
+    fid_cal_batch_size=50,
+    data_loader=None,
+    force_inference=False,
+  ):
 
-    opt = {'batch_size': self.inference_size, 'use_xdog': False, 'disable_random_line': True, 'is_validate': True}
-    it_test = iter(gen_data_loader(self.data_path_val, shuffle=False, **opt))
+    os.makedirs(color_save_path, exist_ok=True)
+    os.makedirs(gen_save_path, exist_ok=True)
 
-    with torch.no_grad():
-      for _it in trange(len(it_test)):
-        line, color, _, noise = next(it_test)
-        line = line.cuda().to(dtype=torch.float32)
-        color = color.cuda().to(dtype=torch.float32)
-        noise = noise.cuda().to(dtype=torch.float32)
-        generated_images = self.generator(line, color, noise)
+    num_exist_color = len(os.listdir(color_save_path))
+    num_exist_gen = len(os.listdir(gen_save_path))
 
-        for batch_idx, generated_image in enumerate(generated_images):
-          generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
-          generated_image = Image.fromarray(generated_image).convert('RGB')
-          file_index = _it * opt['batch_size'] + batch_idx
-          file_path = os.path.join(save_path, f'{file_index:04}.png')
-          generated_image.save(file_path)
+    if not force_inference and (num_exist_color > 0 or num_exist_gen > 0):
+      assert num_exist_color == num_exist_gen
+      print(f"Found {num_exist_gen} entries in {color_save_path} and {gen_save_path}. Skip inference.")
 
-    self.generator.train()
+    else:
+      self.generator.eval()
+
+      opt = {
+        'batch_size': self.inference_size,
+        'use_xdog': False,
+        'disable_random_line': True,
+        'is_validate': True
+      }
+      it_test = iter(gen_data_loader(self.data_path_val, shuffle=False, **opt)) if data_loader is None else data_loader
+
+      with torch.no_grad():
+        for _it in trange(len(it_test)):
+          line, color, _, noise = next(it_test)
+          line = line.cuda().to(dtype=torch.float32)
+          color = color.cuda().to(dtype=torch.float32)
+          noise = noise.cuda().to(dtype=torch.float32)
+          generated_images = self.generator(line, color, noise)
+
+          for batch_idx, (color_image, generated_image) in enumerate(zip(color, generated_images)):
+            color_image = np.uint8(util.denorm_image(color_image).numpy() * 255)
+            color_image = Image.fromarray(color_image).convert('RGB')
+
+            generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
+            generated_image = Image.fromarray(generated_image).convert('RGB')
+
+            file_index = _it * opt['batch_size'] + batch_idx
+            color_file_path = os.path.join(color_save_path, f'{file_index:04}.png')
+            gen_file_path = os.path.join(gen_save_path, f'{file_index:04}.png')
+
+            color_image.save(color_file_path)
+            generated_image.save(gen_file_path)
+
+      self.generator.train()
+    
+    num_avail_cpus = len(os.sched_getaffinity(0))
+    num_workers = min(num_avail_cpus, 8)
+
+    fid_score = calculate_fid_given_paths(
+      paths=[color_file_path, gen_file_path],
+      batch_size=fid_cal_batch_size,
+      device=torch.device('cuda' if (torch.cuda.is_available()) else 'cpu'),
+      dims=2048,
+      num_workers=num_workers
+    )
+    
+    return fid_score
 
   def save_checkpoint(self, iteration=..., filepath=...):
     if iteration is ...:
