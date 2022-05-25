@@ -8,7 +8,7 @@ class Discriminator(nn.Module):
         super().__init__()
         # with_norm = with_encoder_first_layer_norm
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
-        opts = { **gen_block_options, 'spec_norm': use_spec_norm }
+        opts = { **dis_block_options, 'spec_norm': use_spec_norm }
 
         self.input_num = input_num
         self.blocks = nn.Sequential(
