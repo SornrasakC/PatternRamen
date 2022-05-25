@@ -25,11 +25,11 @@ class Trainer():
       use_gp_loss_color=True, gp_lambda_color=10, 
       use_gp_loss_line=True, gp_lambda_line=10, 
       gan_loss_type='lsgan',
-      use_vgg_cache=False, rgan_mode=False,
+      use_vgg_cache=False, rgan_mode=False, use_spec_norm=True,
     ):
-    self.discriminator_line = Discriminator(input_num=1, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode)
-    self.discriminator_color = Discriminator(input_num=1, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode)
-    self.generator = Generator()
+    self.discriminator_line = Discriminator(input_num=1, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode, use_spec_norm=use_spec_norm)
+    self.discriminator_color = Discriminator(input_num=1, gan_loss_type=gan_loss_type, rgan_mode=rgan_mode, use_spec_norm=use_spec_norm)
+    self.generator = Generator(use_spec_norm=use_spec_norm)
     self.vgg16 = torchvision.models.vgg16(pretrained=True).features[:25]
     self.vgg16.cuda()
     self.vgg16.eval()
@@ -70,6 +70,7 @@ class Trainer():
     # self.with_encoder_first_layer_norm = with_encoder_first_layer_norm
     self.gan_loss_type = gan_loss_type
     self.rgan_mode = rgan_mode
+    self.use_spec_norm = use_spec_norm
     # self.use_vgg_cache = use_vgg_cache
         
   def init_optimizers(self, g_lr, d_line_lr, d_color_lr):

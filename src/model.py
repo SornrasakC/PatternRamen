@@ -4,17 +4,18 @@ import torch
 import src.util as util
 
 class Discriminator(nn.Module):
-    def __init__(self, input_num=1, gan_loss_type='lsgan', rgan_mode=False):
+    def __init__(self, input_num=1, gan_loss_type='lsgan', rgan_mode=False, use_spec_norm=False):
         super().__init__()
         # with_norm = with_encoder_first_layer_norm
         dis_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
+        opts = { **gen_block_options, 'spec_norm': use_spec_norm }
 
         self.input_num = input_num
         self.blocks = nn.Sequential(
             DiscriminatorBlock(3 * input_num, 64, **dis_block_options, with_norm=False, spec_norm=False),
-            DiscriminatorBlock(64, 128, **dis_block_options),
-            DiscriminatorBlock(128, 256, **dis_block_options),
-            DiscriminatorBlock(256, 512, **dis_block_options),
+            DiscriminatorBlock(64, 128, **opts),
+            DiscriminatorBlock(128, 256, **opts),
+            DiscriminatorBlock(256, 512, **opts),
             nn.Conv2d(512, 1, 4, 1, 1),
         )
         
@@ -116,43 +117,44 @@ class GANLoss(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, use_spec_norm=False):
         super().__init__()
         # with_norm = with_encoder_first_layer_norm
         gen_block_options = {"kernel_size": 3, "stride": 2, "padding": 1}
+        opts = { **gen_block_options, 'spec_norm': use_spec_norm }
 
         self.sketch_encoder_blocks = nn.ModuleList(
             [
                 GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=False, spec_norm=False),
-                GeneratorEncoderBlock(64, 128, **gen_block_options),
-                GeneratorEncoderBlock(128, 256, **gen_block_options),
-                GeneratorEncoderBlock(256, 512, **gen_block_options),
-                GeneratorEncoderBlock(512, 512, **gen_block_options),
-                GeneratorEncoderBlock(512, 512, **gen_block_options),
+                GeneratorEncoderBlock(64, 128, **opts),
+                GeneratorEncoderBlock(128, 256, **opts),
+                GeneratorEncoderBlock(256, 512, **opts),
+                GeneratorEncoderBlock(512, 512, **opts),
+                GeneratorEncoderBlock(512, 512, **opts),
             ]
         )
 
         self.reference_encoder_blocks = nn.ModuleList(
             [
                 GeneratorEncoderBlock(3, 64, **gen_block_options, with_norm=False, spec_norm=False),
-                GeneratorEncoderBlock(64, 128, **gen_block_options),
-                GeneratorEncoderBlock(128, 256, **gen_block_options),
-                GeneratorEncoderBlock(256, 512, **gen_block_options),
-                GeneratorEncoderBlock(512, 512, **gen_block_options),
+                GeneratorEncoderBlock(64, 128, **opts),
+                GeneratorEncoderBlock(128, 256, **opts),
+                GeneratorEncoderBlock(256, 512, **opts),
+                GeneratorEncoderBlock(512, 512, **opts),
             ]
         )
 
         res_blocks = [
-            SPADEResBlock(1024, 1024, segmap_channels=512, scale_factor=2),
-            SPADEResBlock(1024, 1024, segmap_channels=512),
-            SPADEResBlock(1024, 1024, segmap_channels=512, scale_factor=2),
-            SPADEResBlock(1024, 512 , segmap_channels=512),
-            SPADEResBlock(512 , 512 , segmap_channels=512, scale_factor=2),
-            SPADEResBlock(512 , 256 , segmap_channels=256),
-            SPADEResBlock(256 , 256 , segmap_channels=256, scale_factor=2),
-            SPADEResBlock(256 , 128 , segmap_channels=128),
-            SPADEResBlock(128 , 128 , segmap_channels=128, scale_factor=2),
-            SPADEResBlock(128 , 64  , segmap_channels=64 , scale_factor=2),
+            SPADEResBlock(1024, 1024, spec_norm=use_spec_norm, segmap_channels=512, scale_factor=2),
+            SPADEResBlock(1024, 1024, spec_norm=use_spec_norm, segmap_channels=512),
+            SPADEResBlock(1024, 1024, spec_norm=use_spec_norm, segmap_channels=512, scale_factor=2),
+            SPADEResBlock(1024, 512 , spec_norm=use_spec_norm, segmap_channels=512),
+            SPADEResBlock(512 , 512 , spec_norm=use_spec_norm, segmap_channels=512, scale_factor=2),
+            SPADEResBlock(512 , 256 , spec_norm=use_spec_norm, segmap_channels=256),
+            SPADEResBlock(256 , 256 , spec_norm=use_spec_norm, segmap_channels=256, scale_factor=2),
+            SPADEResBlock(256 , 128 , spec_norm=use_spec_norm, segmap_channels=128),
+            SPADEResBlock(128 , 128 , spec_norm=use_spec_norm, segmap_channels=128, scale_factor=2),
+            SPADEResBlock(128 , 64  , spec_norm=use_spec_norm, segmap_channels=64 , scale_factor=2),
         ]
 
         self.decoder_blocks = nn.ModuleList(
