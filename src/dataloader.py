@@ -18,7 +18,14 @@ from skimage.util import random_noise
 
 from src.fixed_noise import fixed_noise
 
-PARAM = {"gamma": 0.95, "phi": 1e9, "eps": -1, "k": 4.5, "sigma": 0.3}
+# PARAM = {"gamma": 0.95, "phi": 1e9, "eps": -1, "k": 4.5, "sigma": 0.3}
+PARAM = {
+    'gamma' : 0.95,
+    'phi' : 1e9,
+    'eps' : -0.4,
+    'k' : 4.5,
+    'sigma' : 0.15 #0.15-0.2
+}
 
 
 def dog(img, size=(0, 0), k=1.6, sigma=0.5, gamma=1):
@@ -64,6 +71,7 @@ class XDoGData(torch.utils.data.Dataset):
         self.is_validate = is_validate
         self.use_xdog = use_xdog
         self.disable_random_line = disable_random_line
+        self.line_width_range = (25,40)
 
         train_transform = nn.Sequential(
             transforms.RandomRotation(60, fill=255),
@@ -117,7 +125,7 @@ class XDoGData(torch.utils.data.Dataset):
             ### draw random line on picture
             rotate_angle = np.random.uniform(-60, 60, 1)[0]
             tran_color = transforms.functional.rotate(tran_color, rotate_angle, fill=255)
-            tran_color = draw_random_line(tran_color, (50, 75))
+            tran_color = draw_random_line(tran_color, self.line_width_range)
             tran_color = transforms.functional.rotate(tran_color, -rotate_angle, fill=255)
 
         # color, tran_color = self.transform(color), self.transform(tran_color)
