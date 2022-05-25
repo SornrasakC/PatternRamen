@@ -43,11 +43,14 @@ class Discriminator(nn.Module):
             d_fake = self(*conds, fake)
 
             if self.rgan_mode == 'ragan':
-                d_real = d_real.mean() # if not only_fake else None
-                d_fake = d_fake.mean()
+                d_real_diff = d_real.mean() # if not only_fake else None
+                d_fake_diff = d_fake.mean()
+            elif self.rgan_mode == 'rgan':
+                d_real_diff = d_real
+                d_fake_diff = d_fake
         
-            d_loss_real = self._criterion(d_real - d_fake, label=1) if not only_fake else None
-            d_loss_fake = self._criterion(d_fake - d_real, label=0 if not only_fake else 1)
+            d_loss_real = self._criterion(d_real - d_fake_diff, label=1) if not only_fake else None
+            d_loss_fake = self._criterion(d_fake - d_real_diff, label=0 if not only_fake else 1)
         
         gp = self._calc_gp(real, fake, *conds) if with_gp else False
 
