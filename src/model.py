@@ -77,7 +77,7 @@ class Discriminator(nn.Module):
     
     def _criterion(self, pred, label: int):
         if self.gan_loss_type == 'lsgan':
-            return self.loss( pred, target_label ) / 2
+            return self.loss( pred, bool(label) ) / 2
 
         if self.gan_loss_type == 'wgan-gp':
             return ( 1 if bool(label) else -1 ) * pred.mean()
