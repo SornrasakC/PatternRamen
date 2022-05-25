@@ -279,7 +279,6 @@ class Trainer():
     gen_save_path='results/generated/',
     batch_size=None,
     data_loader=None,
-    force_inference=False,
   ):
 
     os.makedirs(color_save_path, exist_ok=True)
@@ -288,7 +287,7 @@ class Trainer():
     num_exist_color = len(os.listdir(color_save_path))
     num_exist_gen = len(os.listdir(gen_save_path))
 
-    if not force_inference and (num_exist_color > 0 or num_exist_gen > 0):
+    if num_exist_color > 0 or num_exist_gen > 0:
       assert num_exist_color == num_exist_gen
       print(f"Found {num_exist_gen} entries in {color_save_path} and {gen_save_path}. Skip inference.")
 
