@@ -17,13 +17,16 @@ class Discriminator(nn.Module):
             DiscriminatorBlock(256, 512, **dis_block_options),
             nn.Conv2d(512, 1, 4, 1, 1),
         )
-
-        target_fake_label = -1.0 if self.rgan_mode in ['rgan', 'ragan'] else 0.0
-        self.loss = GANLoss(gan_loss_type=gan_loss_type, target_fake_label=target_fake_label)
-        self.gan_loss_type = gan_loss_type
-        self.rgan_mode = rgan_mode
+        
         if rgan_mode not in [False, 'rgan', 'ragan']:
             raise NotImplementedError(f'rgan_mode: {rgan_mode}')
+
+        self.rgan_mode = rgan_mode
+        self.gan_loss_type = gan_loss_type
+
+        target_fake_label = -1.0 if rgan_mode in ['rgan', 'ragan'] else 0.0
+        self.loss = GANLoss(gan_loss_type=gan_loss_type, target_fake_label=target_fake_label)
+        
 
     def forward(self, *x):
         x = torch.cat(x, dim=1)
