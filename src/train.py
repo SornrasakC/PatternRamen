@@ -285,7 +285,9 @@ class Trainer():
 
     os.makedirs(color_save_path, exist_ok=True)
     os.makedirs(gen_save_path, exist_ok=True)
-    os.makedirs(pic_row_save_path, exist_ok=True)
+    
+    if pic_row_save_path is not None:
+      os.makedirs(pic_row_save_path, exist_ok=True)
 
     num_exist_color = len(os.listdir(color_save_path))
     num_exist_gen = len(os.listdir(gen_save_path))
