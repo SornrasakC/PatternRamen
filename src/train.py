@@ -277,8 +277,9 @@ class Trainer():
     self,
     color_save_path='results/color/',
     gen_save_path='results/generated/',
-    batch_size=None,
+    batch_size=64,
     data_loader=None,
+    color_match_line=False,
   ):
 
     os.makedirs(color_save_path, exist_ok=True)
@@ -294,7 +295,6 @@ class Trainer():
     else:
       self.generator.eval()
 
-      batch_size = self.inference_size if batch_size is None else batch_size
       opt = {
         'batch_size': batch_size,
         'use_xdog': False,
@@ -306,6 +306,10 @@ class Trainer():
       with torch.no_grad():
         for _it in trange(len(it_test)):
           line, color, _, noise = next(it_test)
+          
+          if not color_match_line:
+            color = color[::-1]
+
           line = line.cuda().to(dtype=torch.float32)
           color = color.cuda().to(dtype=torch.float32)
           noise = noise.cuda().to(dtype=torch.float32)
