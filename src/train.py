@@ -277,9 +277,10 @@ class Trainer():
     self,
     color_save_path='results/color/',
     gen_save_path='results/generated/',
+    pic_row_save_path=None,
     batch_size=64,
     data_loader=None,
-    color_match_line=True,
+    color_match_line=False,
   ):
 
     os.makedirs(color_save_path, exist_ok=True)
@@ -315,11 +316,17 @@ class Trainer():
           noise = noise.cuda().to(dtype=torch.float32)
           generated_images = self.generator(line, color, noise)
 
-          for batch_idx, (color_image, generated_image) in enumerate(zip(color, generated_images)):
-            color_image = np.uint8(util.denorm_image(color_image).numpy() * 255)
-            color_image = Image.fromarray(color_image).convert('RGB')
+          for batch_idx, (line_image, color_image, generated_image) in enumerate(zip(line, color, generated_images)):
 
+            color_image = np.uint8(util.denorm_image(color_image).numpy() * 255)
             generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
+            if pic_row_save_path is not None:
+              line_image = np.uint8(util.denorm_image(line[batch_idx]).numpy() * 255)
+              pic_row = np.concatenate([line_image, color_image, generated_image], axis=1)
+              pic_row = Image.fromarray(pic_row).convert('RGB')
+              pic_row.save(pic_row_save_path)
+
+            color_image = Image.fromarray(color_image).convert('RGB')
             generated_image = Image.fromarray(generated_image).convert('RGB')
 
             file_index = _it * opt['batch_size'] + batch_idx
