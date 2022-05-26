@@ -38,7 +38,9 @@ def xdog(img, sigma=0.5, k=1.6, gamma=1, epsilon=1, phi=1):
     imgColor = img[:, : int(img.shape[1] / 2)]
     imgLine = img[:, int(img.shape[1] / 2) :]
     # aux = dog(imgLine, sigma=sigma, k=k, gamma=gamma) / 255
-    aux = dog(cv2.cvtColor(imgColor, cv2.COLOR_BGR2GRAY),sigma=sigma,k=k,gamma=gamma)/255
+    norm_image = cv2.normalize(imgColor, None, norm_type=cv2.NORM_INF, dtype=cv2.CV_32F) #cv2.NORM_INF
+    # norm_image = imgColor
+    aux = dog(cv2.cvtColor(norm_image, cv2.COLOR_BGR2GRAY),sigma=sigma,k=k,gamma=gamma)/255
     aux = np.where(aux < epsilon, 1 * 255, 255 * (1 + np.tanh(phi * (aux))))
     aux = cv2.cvtColor(aux.astype('float32'),cv2.COLOR_GRAY2RGB)
     # aux = cv2.merge([aux,aux,aux])
