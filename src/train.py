@@ -331,7 +331,7 @@ class Trainer():
     num_workers = min(num_avail_cpus, 8)
 
     fid_score = calculate_fid_given_paths(
-      paths=[color_file_path, gen_file_path],
+      paths=[color_save_path, gen_save_path],
       batch_size=batch_size,
       device=torch.device('cuda' if (torch.cuda.is_available()) else 'cpu'),
       dims=2048,
