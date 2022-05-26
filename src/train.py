@@ -285,6 +285,7 @@ class Trainer():
 
     os.makedirs(color_save_path, exist_ok=True)
     os.makedirs(gen_save_path, exist_ok=True)
+    os.makedirs(pic_row_save_path, exist_ok=True)
 
     num_exist_color = len(os.listdir(color_save_path))
     num_exist_gen = len(os.listdir(gen_save_path))
@@ -318,6 +319,8 @@ class Trainer():
 
           for batch_idx, (line_image, color_image, generated_image) in enumerate(zip(line, color, generated_images)):
 
+            file_index = _it * opt['batch_size'] + batch_idx
+
             color_image = np.uint8(util.denorm_image(color_image).numpy() * 255)
             generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
             
@@ -332,7 +335,6 @@ class Trainer():
             color_image = Image.fromarray(color_image).convert('RGB')
             generated_image = Image.fromarray(generated_image).convert('RGB')
 
-            file_index = _it * opt['batch_size'] + batch_idx
             color_file_path = os.path.join(color_save_path, f'{file_index:04}.png')
             gen_file_path = os.path.join(gen_save_path, f'{file_index:04}.png')
 
