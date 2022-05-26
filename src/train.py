@@ -279,7 +279,7 @@ class Trainer():
     gen_save_path='results/generated/',
     batch_size=64,
     data_loader=None,
-    color_match_line=False,
+    color_match_line=True,
   ):
 
     os.makedirs(color_save_path, exist_ok=True)
@@ -308,7 +308,7 @@ class Trainer():
           line, color, _, noise = next(it_test)
           
           if not color_match_line:
-            color = color[::-1]
+            color = torch.flip(color, [0])
 
           line = line.cuda().to(dtype=torch.float32)
           color = color.cuda().to(dtype=torch.float32)
