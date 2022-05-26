@@ -320,11 +320,14 @@ class Trainer():
 
             color_image = np.uint8(util.denorm_image(color_image).numpy() * 255)
             generated_image = np.uint8(util.denorm_image(generated_image).numpy() * 255)
+            
             if pic_row_save_path is not None:
               line_image = np.uint8(util.denorm_image(line[batch_idx]).numpy() * 255)
               pic_row = np.concatenate([line_image, color_image, generated_image], axis=1)
               pic_row = Image.fromarray(pic_row).convert('RGB')
-              pic_row.save(pic_row_save_path)
+
+              pic_row_file_path = os.path.join(pic_row_save_path, f'{file_index:04}.png')
+              pic_row.save(pic_row_file_path)
 
             color_image = Image.fromarray(color_image).convert('RGB')
             generated_image = Image.fromarray(generated_image).convert('RGB')
