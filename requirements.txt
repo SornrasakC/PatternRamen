@@ -1,1 +1,1 @@
-pytorch-fid=0.2.1
+pytorch-fid==0.2.1
